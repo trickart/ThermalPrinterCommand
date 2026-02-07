@@ -9,6 +9,7 @@ public struct TextReceiptRenderer {
     // MARK: - Options
 
     public var ansiStyleEnabled: Bool
+    public var sixelEnabled: Bool
 
     // MARK: - Printer State
 
@@ -34,8 +35,9 @@ public struct TextReceiptRenderer {
 
     // MARK: - Initializer
 
-    public init(ansiStyleEnabled: Bool = false) {
+    public init(ansiStyleEnabled: Bool = false, sixelEnabled: Bool = false) {
         self.ansiStyleEnabled = ansiStyleEnabled
+        self.sixelEnabled = sixelEnabled
     }
 
     // MARK: - Rendering
@@ -120,13 +122,24 @@ public struct TextReceiptRenderer {
         case .qrCodePrint:
             break  // qrCodeStoreで既に表示済み
 
-        case .rasterImage(_, let width, let height, _):
+        case .rasterImage(_, let width, let height, let data):
             flushLine()
-            printCentered("[IMAGE: \(width * 8)x\(height) dots]")
+            if sixelEnabled {
+                let sixel = SixelEncoder.encode(data: data, widthBytes: Int(width), height: Int(height))
+                outputLine(applySixelJustification(sixel, imageCharWidth: Int(width)))
+            } else {
+                printCentered("[IMAGE: \(width * 8)x\(height) dots]")
+            }
 
-        case .graphicsStore(_, _, _, _, let width, let height, _):
+        case .graphicsStore(_, _, _, _, let width, let height, let data):
             flushLine()
-            printCentered("[IMAGE: \(width)x\(height) dots]")
+            if sixelEnabled {
+                let widthBytes = (Int(width) + 7) / 8
+                let sixel = SixelEncoder.encode(data: data, widthBytes: widthBytes, height: Int(height))
+                outputLine(applySixelJustification(sixel, imageCharWidth: widthBytes))
+            } else {
+                printCentered("[IMAGE: \(width)x\(height) dots]")
+            }
 
         case .graphicsPrint:
             break  // graphicsStoreで既に表示済み
@@ -204,6 +217,21 @@ public struct TextReceiptRenderer {
         case .right:
             let padding = paperWidth - visibleLength
             return String(repeating: " ", count: padding) + styled
+        }
+    }
+
+    private func applySixelJustification(_ sixel: String, imageCharWidth: Int) -> String {
+        guard imageCharWidth < paperWidth else { return sixel }
+
+        switch justification {
+        case .left:
+            return sixel
+        case .center:
+            let padding = (paperWidth - imageCharWidth) / 2
+            return String(repeating: " ", count: padding) + sixel
+        case .right:
+            let padding = paperWidth - imageCharWidth
+            return String(repeating: " ", count: padding) + sixel
         }
     }
 

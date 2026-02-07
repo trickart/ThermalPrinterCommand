@@ -6,9 +6,9 @@ import ThermalPrinterCommand
 @Suite("TextReceiptRenderer Tests")
 struct TextReceiptRendererTests {
 
-    private func makeRenderer(ansiStyleEnabled: Bool = true) -> (TextReceiptRenderer, () -> [String]) {
+    private func makeRenderer(ansiStyleEnabled: Bool = true, sixelEnabled: Bool = false) -> (TextReceiptRenderer, () -> [String]) {
         var lines: [String] = []
-        var renderer = TextReceiptRenderer(ansiStyleEnabled: ansiStyleEnabled)
+        var renderer = TextReceiptRenderer(ansiStyleEnabled: ansiStyleEnabled, sixelEnabled: sixelEnabled)
         renderer.outputLine = { lines.append($0) }
         return (renderer, { lines })
     }
@@ -264,5 +264,55 @@ struct TextReceiptRendererTests {
         #expect(lines.count == 1)
         #expect(lines[0] == "Styled")
         #expect(!lines[0].contains("\u{1B}"))
+    }
+
+    // MARK: - Sixel画像出力
+
+    @Test("sixelEnabled=false: rasterImageでプレースホルダーが出力される")
+    func rasterImagePlaceholder() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: false)
+        let imageData = Data(repeating: 0xFF, count: 6)
+        renderer.render(.rasterImage(mode: .normal, width: 1, height: 6, data: imageData))
+        let lines = getLines()
+        #expect(lines.last?.contains("[IMAGE:") == true)
+    }
+
+    @Test("sixelEnabled=true: rasterImageでDCS...ST形式のSixel出力が得られる")
+    func rasterImageSixel() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        let imageData = Data(repeating: 0xFF, count: 6)
+        renderer.render(.rasterImage(mode: .normal, width: 1, height: 6, data: imageData))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+        #expect(lines.last?.hasSuffix("\u{1B}\\") == true)
+    }
+
+    @Test("sixelEnabled=true: graphicsStoreでSixel出力が得られる")
+    func graphicsStoreSixel() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        // width=8ピクセル → widthBytes=1
+        let imageData = Data(repeating: 0xFF, count: 6)
+        renderer.render(.graphicsStore(
+            tone: .monochrome, scaleX: 1, scaleY: 1, color: .color1,
+            width: 8, height: 6, data: imageData
+        ))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+        #expect(lines.last?.hasSuffix("\u{1B}\\") == true)
+    }
+
+    @Test("sixelEnabled=true: graphicsStoreのwidthが8の倍数でなくても正しく変換される")
+    func graphicsStoreNonAlignedWidth() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        // width=12ピクセル → widthBytes=(12+7)/8=2
+        let imageData = Data(repeating: 0xFF, count: 2)
+        renderer.render(.graphicsStore(
+            tone: .monochrome, scaleX: 1, scaleY: 1, color: .color1,
+            width: 12, height: 1, data: imageData
+        ))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+        // widthBytes=2 → 16ピクセル幅
+        #expect(lines.last?.contains("\"1;1;16;1") == true)
     }
 }
