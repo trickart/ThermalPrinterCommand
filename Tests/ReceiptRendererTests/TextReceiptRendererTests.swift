@@ -315,4 +315,154 @@ struct TextReceiptRendererTests {
         // widthBytes=2 → 16ピクセル幅
         #expect(lines.last?.contains("\"1;1;16;1") == true)
     }
+
+    // MARK: - バーコードSixel出力
+
+    @Test("sixelEnabled=true: CODE128バーコードがSixel形式で出力される")
+    func barcodeSixelCode128() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .code128, data: Data("12345".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+        #expect(lines.last?.hasSuffix("\u{1B}\\") == true)
+    }
+
+    @Test("sixelEnabled=true: EAN13バーコードがSixel形式で出力される")
+    func barcodeSixelEAN13() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .ean13, data: Data("4901234567894".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=true: EAN8バーコードがSixel形式で出力される")
+    func barcodeSixelEAN8() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .ean8, data: Data("12345670".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=true: CODE39バーコードがSixel形式で出力される")
+    func barcodeSixelCode39() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .code39, data: Data("ABC123".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=true: ITFバーコードがSixel形式で出力される")
+    func barcodeSixelITF() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .itf, data: Data("1234567890".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=true: CODABARバーコードがSixel形式で出力される")
+    func barcodeSixelCodabar() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .codabar, data: Data("A12345B".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=true: CODE93バーコードがSixel形式で出力される")
+    func barcodeSixelCode93() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .code93, data: Data("12345".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=true: UPC-Aバーコードがsixel形式で出力される")
+    func barcodeSixelUPCA() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .upcA, data: Data("012345678905".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=true: UPC-Eバーコードがsixel形式で出力される")
+    func barcodeSixelUPCE() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcode(type: .upcE, data: Data("123456".utf8)))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("sixelEnabled=false: バーコードは従来のテキスト形式で出力される")
+    func barcodeFallbackWhenSixelDisabled() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: false)
+        renderer.render(.barcode(type: .code128, data: Data("12345".utf8)))
+        let lines = getLines()
+        let text = "[CODE128] ||| 12345 |||"
+        let expectedPadding = (48 - text.count) / 2
+        #expect(lines.last == String(repeating: " ", count: expectedPadding) + text)
+    }
+
+    @Test("barcodeHeight設定がSixel出力のサイズに反映される")
+    func barcodeHeightAffectsSixel() {
+        var (renderer1, getLines1) = makeRenderer(sixelEnabled: true)
+        renderer1.render(.barcodeHeight(dots: 50))
+        renderer1.render(.barcode(type: .code128, data: Data("ABC".utf8)))
+        let sixel1 = getLines1().last ?? ""
+
+        var (renderer2, getLines2) = makeRenderer(sixelEnabled: true)
+        renderer2.render(.barcodeHeight(dots: 100))
+        renderer2.render(.barcode(type: .code128, data: Data("ABC".utf8)))
+        let sixel2 = getLines2().last ?? ""
+
+        // 高さ50のSixelは高さ100より短い（バンド数が少ない）
+        #expect(sixel1.count < sixel2.count)
+    }
+
+    @Test("barcodeHRIPosition(.below)でバーコード下にHRIテキストが出力される")
+    func barcodeHRIBelow() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcodeHRIPosition(.below))
+        renderer.render(.barcode(type: .code128, data: Data("12345".utf8)))
+        let nonEmpty = getLines().filter { !$0.isEmpty }
+        // Sixel + HRI text
+        #expect(nonEmpty.count == 2)
+        #expect(nonEmpty[0].contains("\u{1B}P0;1;q") == true)
+        #expect(nonEmpty[1].contains("12345") == true)
+    }
+
+    @Test("barcodeHRIPosition(.above)でバーコード上にHRIテキストが出力される")
+    func barcodeHRIAbove() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcodeHRIPosition(.above))
+        renderer.render(.barcode(type: .code128, data: Data("12345".utf8)))
+        let nonEmpty = getLines().filter { !$0.isEmpty }
+        #expect(nonEmpty.count == 2)
+        #expect(nonEmpty[0].contains("12345") == true)
+        #expect(nonEmpty[1].contains("\u{1B}P0;1;q") == true)
+    }
+
+    @Test("barcodeHRIPosition(.both)でバーコード上下にHRIテキストが出力される")
+    func barcodeHRIBoth() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcodeHRIPosition(.both))
+        renderer.render(.barcode(type: .code128, data: Data("12345".utf8)))
+        let nonEmpty = getLines().filter { !$0.isEmpty }
+        #expect(nonEmpty.count == 3)
+        #expect(nonEmpty[0].contains("12345") == true)
+        #expect(nonEmpty[1].contains("\u{1B}P0;1;q") == true)
+        #expect(nonEmpty[2].contains("12345") == true)
+    }
+
+    @Test("initialize後にバーコード設定がリセットされる")
+    func initializeResetsBarcodeState() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.barcodeHeight(dots: 50))
+        renderer.render(.barcodeHRIPosition(.below))
+        renderer.render(.initialize)
+        renderer.render(.barcode(type: .code128, data: Data("ABC".utf8)))
+        let nonEmpty = getLines().filter { !$0.isEmpty }
+        // [PRINTER INITIALIZED] + Sixel（HRIなし）
+        #expect(nonEmpty.count == 2)
+        #expect(nonEmpty[0].contains("PRINTER INITIALIZED") == true)
+        #expect(nonEmpty[1].contains("\u{1B}P0;1;q") == true)
+    }
 }

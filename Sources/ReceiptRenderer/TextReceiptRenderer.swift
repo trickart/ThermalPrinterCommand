@@ -20,6 +20,9 @@ public struct TextReceiptRenderer {
     private var widthMultiplier: UInt8 = 1
     private var heightMultiplier: UInt8 = 1
     private var lineBuffer = ""
+    private var barcodeHeight: UInt8 = 162
+    private var barcodeWidthMultiplier: UInt8 = 3
+    private var barcodeHRIPosition: ESCPOSCommand.HRIPosition = .notPrinted
 
     private let paperWidth = 48  // 標準的な58mmプリンタの文字幅
 
@@ -110,9 +113,27 @@ public struct TextReceiptRenderer {
 
         case .barcode(let type, let data):
             flushLine()
-            let typeName = barcodeTypeName(type)
-            let dataStr = String(data: data, encoding: .ascii) ?? data.map { String(format: "%02X", $0) }.joined()
-            printCentered("[\(typeName)] ||| \(dataStr) |||")
+            if sixelEnabled,
+               let image = BarcodeRasterizer.rasterize(
+                   type: type,
+                   data: data,
+                   moduleWidth: Int(barcodeWidthMultiplier),
+                   height: Int(barcodeHeight)
+               ) {
+                let dataStr = String(data: data, encoding: .ascii) ?? data.map { String(format: "%02X", $0) }.joined()
+                if barcodeHRIPosition == .above || barcodeHRIPosition == .both {
+                    printCentered(dataStr)
+                }
+                let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height)
+                outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes))
+                if barcodeHRIPosition == .below || barcodeHRIPosition == .both {
+                    printCentered(dataStr)
+                }
+            } else {
+                let typeName = barcodeTypeName(type)
+                let dataStr = String(data: data, encoding: .ascii) ?? data.map { String(format: "%02X", $0) }.joined()
+                printCentered("[\(typeName)] ||| \(dataStr) |||")
+            }
 
         case .qrCodeStore(let data):
             flushLine()
@@ -151,8 +172,16 @@ public struct TextReceiptRenderer {
         case .openCashDrawer:
             printCentered("[CASH DRAWER OPEN]")
 
-        case .selectFont, .barcodeHeight, .barcodeWidth,
-             .barcodeHRIPosition, .barcodeHRIFont,
+        case .barcodeHeight(let dots):
+            barcodeHeight = dots
+
+        case .barcodeWidth(let multiplier):
+            barcodeWidthMultiplier = multiplier
+
+        case .barcodeHRIPosition(let position):
+            barcodeHRIPosition = position
+
+        case .selectFont, .barcodeHRIFont,
              .qrCodeModel, .qrCodeSize, .qrCodeErrorCorrection,
              .leftMargin, .printingWidth,
              .defaultLineSpacing, .lineSpacing,
@@ -253,6 +282,9 @@ public struct TextReceiptRenderer {
         widthMultiplier = 1
         heightMultiplier = 1
         lineBuffer = ""
+        barcodeHeight = 162
+        barcodeWidthMultiplier = 3
+        barcodeHRIPosition = .notPrinted
     }
 
     private func barcodeTypeName(_ type: ESCPOSCommand.BarcodeType) -> String {
