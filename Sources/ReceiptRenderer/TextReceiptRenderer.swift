@@ -167,7 +167,13 @@ public struct TextReceiptRenderer {
 
         case .nvGraphicsPrint(let kc1, let kc2, let scaleX, let scaleY):
             flushLine()
-            printCentered("[NV GRAPHICS: key=(\(kc1),\(kc2)) scale=\(scaleX)x\(scaleY)]")
+            if sixelEnabled {
+                let logo = Self.generateNVGraphicsPlaceholder(text: "\(kc1):\(kc2)", scaleX: Int(scaleX), scaleY: Int(scaleY))
+                let sixel = SixelEncoder.encode(data: logo.data, widthBytes: logo.widthBytes, height: logo.height)
+                outputLine(applySixelJustification(sixel, imageCharWidth: logo.widthBytes))
+            } else {
+                printCentered("[NV GRAPHICS: key=(\(kc1),\(kc2)) scale=\(scaleX)x\(scaleY)]")
+            }
 
         case .openCashDrawer:
             printCentered("[CASH DRAWER OPEN]")
@@ -286,6 +292,70 @@ public struct TextReceiptRenderer {
         barcodeWidthMultiplier = 3
         barcodeHRIPosition = .notPrinted
     }
+
+    // MARK: - NV Graphics Placeholder
+
+    /// 指定テキストを描いたダミービットマップを生成する
+    private static func generateNVGraphicsPlaceholder(text: String, scaleX: Int, scaleY: Int) -> (data: Data, widthBytes: Int, height: Int) {
+        let glyphs = text.compactMap { pixelFont[$0] }
+        guard !glyphs.isEmpty else {
+            // フォールバック: 1×1 の黒ドット
+            return (Data([0x80]), 1, 1)
+        }
+
+        let charW = 5, charH = 7, gap = 1, pad = 2, border = 1
+        let textW = glyphs.count * charW + (glyphs.count - 1) * gap
+        let baseW = textW + 2 * pad + 2 * border
+        let baseH = charH + 2 * pad + 2 * border
+
+        let baseScale = 4
+        let sx = max(scaleX, 1) * baseScale, sy = max(scaleY, 1) * baseScale
+        let w = baseW * sx, h = baseH * sy
+        let widthBytes = (w + 7) / 8
+        var bitmap = Data(repeating: 0, count: widthBytes * h)
+
+        func setPixel(_ x: Int, _ y: Int) {
+            guard x >= 0, x < w, y >= 0, y < h else { return }
+            bitmap[y * widthBytes + x / 8] |= UInt8(1 << (7 - x % 8))
+        }
+        func fill(bx: Int, by: Int) {
+            for dy in 0..<sy { for dx in 0..<sx { setPixel(bx * sx + dx, by * sy + dy) } }
+        }
+
+        // 枠線
+        for x in 0..<baseW { fill(bx: x, by: 0); fill(bx: x, by: baseH - 1) }
+        for y in 0..<baseH { fill(bx: 0, by: y); fill(bx: baseW - 1, by: y) }
+
+        // 文字描画
+        let ox = border + pad, oy = border + pad
+        for (gi, glyph) in glyphs.enumerated() {
+            let gx = ox + gi * (charW + gap)
+            for row in 0..<charH {
+                for col in 0..<charW {
+                    if (glyph[row] >> (charW - 1 - col)) & 1 == 1 {
+                        fill(bx: gx + col, by: oy + row)
+                    }
+                }
+            }
+        }
+
+        return (bitmap, widthBytes, h)
+    }
+
+    // 5×7 ピクセルフォント（MSBが左端、幅5ビット）
+    private static let pixelFont: [Character: [UInt8]] = [
+        "0": [0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
+        "1": [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
+        "2": [0b01110, 0b10001, 0b00001, 0b00110, 0b01000, 0b10000, 0b11111],
+        "3": [0b01110, 0b10001, 0b00001, 0b00110, 0b00001, 0b10001, 0b01110],
+        "4": [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
+        "5": [0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110],
+        "6": [0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110],
+        "7": [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000],
+        "8": [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
+        "9": [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
+        ":": [0b00000, 0b00100, 0b00100, 0b00000, 0b00100, 0b00100, 0b00000],
+    ]
 
     private func barcodeTypeName(_ type: ESCPOSCommand.BarcodeType) -> String {
         switch type {

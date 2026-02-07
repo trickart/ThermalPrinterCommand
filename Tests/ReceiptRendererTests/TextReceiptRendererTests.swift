@@ -465,4 +465,37 @@ struct TextReceiptRendererTests {
         #expect(nonEmpty[0].contains("PRINTER INITIALIZED") == true)
         #expect(nonEmpty[1].contains("\u{1B}P0;1;q") == true)
     }
+
+    // MARK: - NVグラフィクスSixel出力
+
+    @Test("sixelEnabled=true: nvGraphicsPrintでSixelロゴプレースホルダーが出力される")
+    func nvGraphicsSixel() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.nvGraphicsPrint(keyCode1: 1, keyCode2: 2, scaleX: 1, scaleY: 1))
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+        #expect(lines.last?.hasSuffix("\u{1B}\\") == true)
+    }
+
+    @Test("sixelEnabled=false: nvGraphicsPrintでテキストプレースホルダーが出力される")
+    func nvGraphicsPlaceholder() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: false)
+        renderer.render(.nvGraphicsPrint(keyCode1: 1, keyCode2: 2, scaleX: 1, scaleY: 1))
+        let lines = getLines()
+        #expect(lines.last?.contains("NV GRAPHICS") == true)
+    }
+
+    @Test("nvGraphicsPrintのscaleでSixel画像サイズが変わる")
+    func nvGraphicsScale() {
+        var (r1, get1) = makeRenderer(sixelEnabled: true)
+        r1.render(.nvGraphicsPrint(keyCode1: 0, keyCode2: 0, scaleX: 1, scaleY: 1))
+        let sixel1 = get1().last ?? ""
+
+        var (r2, get2) = makeRenderer(sixelEnabled: true)
+        r2.render(.nvGraphicsPrint(keyCode1: 0, keyCode2: 0, scaleX: 2, scaleY: 2))
+        let sixel2 = get2().last ?? ""
+
+        // scale=2x2 の方が大きい
+        #expect(sixel1.count < sixel2.count)
+    }
 }
