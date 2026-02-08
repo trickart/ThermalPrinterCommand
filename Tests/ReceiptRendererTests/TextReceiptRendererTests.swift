@@ -153,14 +153,55 @@ struct TextReceiptRendererTests {
 
     // MARK: - QRコード
 
-    @Test("qrCodeStore で QR CODE が中央揃えで出力される")
+    @Test("qrCodePrint で QR CODE が中央揃えで出力される")
     func qrCodeOutput() {
         var (renderer, getLines) = makeRenderer()
         renderer.render(.qrCodeStore(data: Data("https://example.com".utf8)))
+        renderer.render(.qrCodePrint)
         let lines = getLines()
         let text = "[QR CODE: https://example.com]"
         let expectedPadding = (48 - text.count) / 2
         #expect(lines.last == String(repeating: " ", count: expectedPadding) + text)
+    }
+
+    @Test("sixelEnabled=true: QRコードがSixel形式で出力される")
+    func qrCodeSixel() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.qrCodeStore(data: Data("https://example.com".utf8)))
+        renderer.render(.qrCodePrint)
+        let lines = getLines()
+        #expect(lines.last?.hasPrefix("\u{1B}P0;1;q") == true)
+        #expect(lines.last?.hasSuffix("\u{1B}\\") == true)
+    }
+
+    @Test("sixelEnabled=true: qrCodeSizeがSixel出力のモジュールサイズに反映される")
+    func qrCodeModuleSizeAffectsSixel() {
+        var (r1, get1) = makeRenderer(sixelEnabled: true)
+        r1.render(.qrCodeSize(moduleSize: 2))
+        r1.render(.qrCodeStore(data: Data("TEST".utf8)))
+        r1.render(.qrCodePrint)
+        let sixel1 = get1().last ?? ""
+
+        var (r2, get2) = makeRenderer(sixelEnabled: true)
+        r2.render(.qrCodeSize(moduleSize: 6))
+        r2.render(.qrCodeStore(data: Data("TEST".utf8)))
+        r2.render(.qrCodePrint)
+        let sixel2 = get2().last ?? ""
+
+        // moduleSize=6 の方が大きい
+        #expect(sixel1.count < sixel2.count)
+    }
+
+    @Test("sixelEnabled=true: qrCodePrint後にデータがクリアされる")
+    func qrCodeDataClearedAfterPrint() {
+        var (renderer, getLines) = makeRenderer(sixelEnabled: true)
+        renderer.render(.qrCodeStore(data: Data("TEST".utf8)))
+        renderer.render(.qrCodePrint)
+        renderer.render(.qrCodePrint) // 2回目はデータなし
+        let lines = getLines()
+        // Sixel出力は1回のみ
+        let sixelCount = lines.filter { $0.contains("\u{1B}P0;1;q") }.count
+        #expect(sixelCount == 1)
     }
 
     // MARK: - 画像

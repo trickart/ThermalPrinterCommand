@@ -23,6 +23,9 @@ public struct TextReceiptRenderer {
     private var barcodeHeight: UInt8 = 162
     private var barcodeWidthMultiplier: UInt8 = 3
     private var barcodeHRIPosition: ESCPOSCommand.HRIPosition = .notPrinted
+    private var qrCodeModuleSize: UInt8 = 3
+    private var qrCodeErrorCorrection: ESCPOSCommand.QRErrorCorrectionLevel = .l
+    private var qrCodeStoredData: Data?
 
     private let paperWidth = 48  // 標準的な58mmプリンタの文字幅
 
@@ -136,12 +139,25 @@ public struct TextReceiptRenderer {
             }
 
         case .qrCodeStore(let data):
-            flushLine()
-            let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .shiftJIS) ?? "<binary>"
-            printCentered("[QR CODE: \(content)]")
+            qrCodeStoredData = data
 
         case .qrCodePrint:
-            break  // qrCodeStoreで既に表示済み
+            flushLine()
+            if let data = qrCodeStoredData {
+                if sixelEnabled,
+                   let image = QRCodeRasterizer.rasterize(
+                       data: data,
+                       ecLevel: Int(qrCodeErrorCorrection.rawValue) - 48,
+                       moduleSize: Int(qrCodeModuleSize)
+                   ) {
+                    let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height)
+                    outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes))
+                } else {
+                    let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .shiftJIS) ?? "<binary>"
+                    printCentered("[QR CODE: \(content)]")
+                }
+                qrCodeStoredData = nil
+            }
 
         case .rasterImage(_, let width, let height, let data):
             flushLine()
@@ -187,8 +203,14 @@ public struct TextReceiptRenderer {
         case .barcodeHRIPosition(let position):
             barcodeHRIPosition = position
 
+        case .qrCodeSize(let size):
+            qrCodeModuleSize = size
+
+        case .qrCodeErrorCorrection(let level):
+            qrCodeErrorCorrection = level
+
         case .selectFont, .barcodeHRIFont,
-             .qrCodeModel, .qrCodeSize, .qrCodeErrorCorrection,
+             .qrCodeModel,
              .leftMargin, .printingWidth,
              .defaultLineSpacing, .lineSpacing,
              .rotate90, .upsideDown,
@@ -291,6 +313,9 @@ public struct TextReceiptRenderer {
         barcodeHeight = 162
         barcodeWidthMultiplier = 3
         barcodeHRIPosition = .notPrinted
+        qrCodeModuleSize = 3
+        qrCodeErrorCorrection = .l
+        qrCodeStoredData = nil
     }
 
     // MARK: - NV Graphics Placeholder
