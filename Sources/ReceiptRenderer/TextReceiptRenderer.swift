@@ -12,6 +12,8 @@ public struct TextReceiptRenderer {
     public var sixelEnabled: Bool
     /// セル幅（ピクセル）。0 の場合はバーコード幅の自動制限を行わない。
     public var cellPixelWidth: Int = 0
+    /// HiDPIディスプレイのスケールファクター（2=Retina 2x）。Sixel画像を拡大して表示する。
+    public var displayScale: Int = 1
 
     // MARK: - Printer State
 
@@ -130,7 +132,7 @@ public struct TextReceiptRenderer {
                 if barcodeHRIPosition == .above || barcodeHRIPosition == .both {
                     printCentered(dataStr)
                 }
-                let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height)
+                let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height, scale: displayScale)
                 outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes))
                 if barcodeHRIPosition == .below || barcodeHRIPosition == .both {
                     printCentered(dataStr)
@@ -153,7 +155,7 @@ public struct TextReceiptRenderer {
                        ecLevel: Int(qrCodeErrorCorrection.rawValue) - 48,
                        moduleSize: Int(qrCodeModuleSize)
                    ) {
-                    let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height)
+                    let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height, scale: displayScale)
                     outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes))
                 } else {
                     let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .shiftJIS) ?? "<binary>"
@@ -165,7 +167,7 @@ public struct TextReceiptRenderer {
         case .rasterImage(_, let width, let height, let data):
             flushLine()
             if sixelEnabled {
-                let sixel = SixelEncoder.encode(data: data, widthBytes: Int(width), height: Int(height))
+                let sixel = SixelEncoder.encode(data: data, widthBytes: Int(width), height: Int(height), scale: displayScale)
                 outputLine(applySixelJustification(sixel, imageCharWidth: Int(width)))
             } else {
                 printCentered("[IMAGE: \(width * 8)x\(height) dots]")
@@ -175,7 +177,7 @@ public struct TextReceiptRenderer {
             flushLine()
             if sixelEnabled {
                 let widthBytes = (Int(width) + 7) / 8
-                let sixel = SixelEncoder.encode(data: data, widthBytes: widthBytes, height: Int(height))
+                let sixel = SixelEncoder.encode(data: data, widthBytes: widthBytes, height: Int(height), scale: displayScale)
                 outputLine(applySixelJustification(sixel, imageCharWidth: widthBytes))
             } else {
                 printCentered("[IMAGE: \(width)x\(height) dots]")
@@ -188,7 +190,7 @@ public struct TextReceiptRenderer {
             flushLine()
             if sixelEnabled {
                 let logo = Self.generateNVGraphicsPlaceholder(text: "\(kc1):\(kc2)", scaleX: Int(scaleX), scaleY: Int(scaleY))
-                let sixel = SixelEncoder.encode(data: logo.data, widthBytes: logo.widthBytes, height: logo.height)
+                let sixel = SixelEncoder.encode(data: logo.data, widthBytes: logo.widthBytes, height: logo.height, scale: displayScale)
                 outputLine(applySixelJustification(sixel, imageCharWidth: logo.widthBytes))
             } else {
                 printCentered("[NV GRAPHICS: key=(\(kc1),\(kc2)) scale=\(scaleX)x\(scaleY)]")
@@ -390,6 +392,7 @@ public struct TextReceiptRenderer {
     private func effectiveBarcodeModuleWidth(type: ESCPOSCommand.BarcodeType, data: Data) -> Int {
         let moduleWidth = Int(barcodeWidthMultiplier)
         let paperPixelWidth = cellPixelWidth * paperWidth
+        let scale = max(displayScale, 1)
         guard paperPixelWidth > 0, moduleWidth > 1 else { return moduleWidth }
 
         // height=1 で試行ラスタライズし、ピクセル幅だけ算出する
@@ -399,13 +402,14 @@ public struct TextReceiptRenderer {
             return moduleWidth
         }
 
+        // HiDPIスケーリング後の実際の表示幅で判定する
         let imagePixelWidth = trial.widthBytes * 8
-        guard imagePixelWidth > paperPixelWidth else { return moduleWidth }
+        guard imagePixelWidth * scale > paperPixelWidth else { return moduleWidth }
 
         // moduleCount ≈ imagePixelWidth / moduleWidth → 収まる最大の moduleWidth を算出
         let moduleCount = imagePixelWidth / moduleWidth
         guard moduleCount > 0 else { return moduleWidth }
-        return max(1, paperPixelWidth / moduleCount)
+        return max(1, paperPixelWidth / (moduleCount * scale))
     }
 
     private func barcodeTypeName(_ type: ESCPOSCommand.BarcodeType) -> String {
