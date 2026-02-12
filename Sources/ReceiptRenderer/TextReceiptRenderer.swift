@@ -10,6 +10,8 @@ public struct TextReceiptRenderer {
 
     public var ansiStyleEnabled: Bool
     public var sixelEnabled: Bool
+    /// セル幅（ピクセル）。0 の場合はバーコード幅の自動制限を行わない。
+    public var cellPixelWidth: Int = 0
 
     // MARK: - Printer State
 
@@ -116,11 +118,12 @@ public struct TextReceiptRenderer {
 
         case .barcode(let type, let data):
             flushLine()
+            let moduleWidth = effectiveBarcodeModuleWidth(type: type, data: data)
             if sixelEnabled,
                let image = BarcodeRasterizer.rasterize(
                    type: type,
                    data: data,
-                   moduleWidth: Int(barcodeWidthMultiplier),
+                   moduleWidth: moduleWidth,
                    height: Int(barcodeHeight)
                ) {
                 let dataStr = String(data: data, encoding: .ascii) ?? data.map { String(format: "%02X", $0) }.joined()
@@ -381,6 +384,29 @@ public struct TextReceiptRenderer {
         "9": [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
         ":": [0b00000, 0b00100, 0b00100, 0b00000, 0b00100, 0b00100, 0b00000],
     ]
+
+    /// バーコードが用紙幅に収まるよう moduleWidth を自動調整する。
+    /// cellPixelWidth が未設定（0）の場合は barcodeWidthMultiplier をそのまま返す。
+    private func effectiveBarcodeModuleWidth(type: ESCPOSCommand.BarcodeType, data: Data) -> Int {
+        let moduleWidth = Int(barcodeWidthMultiplier)
+        let paperPixelWidth = cellPixelWidth * paperWidth
+        guard paperPixelWidth > 0, moduleWidth > 1 else { return moduleWidth }
+
+        // height=1 で試行ラスタライズし、ピクセル幅だけ算出する
+        guard let trial = BarcodeRasterizer.rasterize(
+            type: type, data: data, moduleWidth: moduleWidth, height: 1
+        ) else {
+            return moduleWidth
+        }
+
+        let imagePixelWidth = trial.widthBytes * 8
+        guard imagePixelWidth > paperPixelWidth else { return moduleWidth }
+
+        // moduleCount ≈ imagePixelWidth / moduleWidth → 収まる最大の moduleWidth を算出
+        let moduleCount = imagePixelWidth / moduleWidth
+        guard moduleCount > 0 else { return moduleWidth }
+        return max(1, paperPixelWidth / moduleCount)
+    }
 
     private func barcodeTypeName(_ type: ESCPOSCommand.BarcodeType) -> String {
         switch type {
