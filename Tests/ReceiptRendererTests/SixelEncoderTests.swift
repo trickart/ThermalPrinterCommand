@@ -106,4 +106,54 @@ struct SixelEncoderTests {
         #expect(result.hasPrefix("\u{1B}P0;1;q"))
         #expect(result.hasSuffix("\u{1B}\\"))
     }
+
+    // MARK: - HiDPIスケーリング
+
+    @Test("scale=2: ラスター属性の幅と高さが2倍になる")
+    func scaleDoublesDimensions() {
+        let data = Data(repeating: 0x00, count: 6)
+        let result = SixelEncoder.encode(data: data, widthBytes: 3, height: 2, scale: 2)
+        // 幅: 3*8*2=48, 高さ: 2*2=4
+        #expect(result.contains("\"1;1;48;4"))
+    }
+
+    @Test("scale=1: デフォルトと同じ出力")
+    func scaleOneIsIdentity() {
+        let data = Data(repeating: 0xFF, count: 6)
+        let noScale = SixelEncoder.encode(data: data, widthBytes: 1, height: 6)
+        let scale1 = SixelEncoder.encode(data: data, widthBytes: 1, height: 6, scale: 1)
+        #expect(noScale == scale1)
+    }
+
+    @Test("scale=2: 全黒1行が2行分のバンドデータになる")
+    func scaleBlackRow() {
+        // 1バイト幅 x 1行の全黒画像
+        let data = Data([0xFF])
+        let result = SixelEncoder.encode(data: data, widthBytes: 1, height: 1, scale: 2)
+        // scale=2: 高さ2行、幅16列
+        #expect(result.contains("\"1;1;16;2"))
+        // 各列のbit0,bit1が1（2行分）→ 値3 → 0x3F+3 = 0x42 = 'B'
+        // 16列連続 → "!16B"
+        #expect(result.contains("!16B"))
+    }
+
+    @Test("scale=2: 全黒6行が12行・2バンドになる")
+    func scaleBlack6Rows() {
+        let data = Data(repeating: 0xFF, count: 6)
+        let result = SixelEncoder.encode(data: data, widthBytes: 1, height: 6, scale: 2)
+        // scale=2: 高さ12行、幅16列
+        #expect(result.contains("\"1;1;16;12"))
+        // 12行 → 2バンド → バンド区切り "$-" が含まれる
+        #expect(result.contains("$-"))
+        // 全バンド全列が '~'（全ビット1）→ "!16~"
+        #expect(result.contains("!16~"))
+    }
+
+    @Test("scale=2: Sixel出力がscale=1より大きい")
+    func scaledOutputIsLarger() {
+        let data = Data(repeating: 0xAA, count: 12)
+        let normal = SixelEncoder.encode(data: data, widthBytes: 2, height: 6)
+        let scaled = SixelEncoder.encode(data: data, widthBytes: 2, height: 6, scale: 2)
+        #expect(scaled.count > normal.count)
+    }
 }

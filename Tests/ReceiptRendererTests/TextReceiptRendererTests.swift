@@ -539,4 +539,41 @@ struct TextReceiptRendererTests {
         // scale=2x2 の方が大きい
         #expect(sixel1.count < sixel2.count)
     }
+
+    // MARK: - HiDPIスケーリング
+
+    @Test("displayScale=2: rasterImageのSixel出力が2倍にスケールされる")
+    func displayScaleRasterImage() {
+        var (r1, get1) = makeRenderer(sixelEnabled: true)
+        let imageData = Data(repeating: 0xFF, count: 6)
+        r1.render(.rasterImage(mode: .normal, width: 1, height: 6, data: imageData))
+        let sixel1 = get1().last ?? ""
+
+        var (r2, get2) = makeRenderer(sixelEnabled: true)
+        r2.displayScale = 2
+        r2.render(.rasterImage(mode: .normal, width: 1, height: 6, data: imageData))
+        let sixel2 = get2().last ?? ""
+
+        // displayScale=2 の方が大きい
+        #expect(sixel2.count > sixel1.count)
+        // ラスター属性で2倍の寸法が宣言される
+        #expect(sixel1.contains("\"1;1;8;6"))
+        #expect(sixel2.contains("\"1;1;16;12"))
+    }
+
+    @Test("displayScale=2: QRコードのSixel出力が2倍にスケールされる")
+    func displayScaleQRCode() {
+        var (r1, get1) = makeRenderer(sixelEnabled: true)
+        r1.render(.qrCodeStore(data: Data("TEST".utf8)))
+        r1.render(.qrCodePrint)
+        let sixel1 = get1().last ?? ""
+
+        var (r2, get2) = makeRenderer(sixelEnabled: true)
+        r2.displayScale = 2
+        r2.render(.qrCodeStore(data: Data("TEST".utf8)))
+        r2.render(.qrCodePrint)
+        let sixel2 = get2().last ?? ""
+
+        #expect(sixel2.count > sixel1.count)
+    }
 }

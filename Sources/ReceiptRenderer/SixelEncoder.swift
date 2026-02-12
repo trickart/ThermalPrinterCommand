@@ -6,23 +6,26 @@ struct SixelEncoder {
     ///   - data: ビットマップデータ（8ピクセル/バイト、MSBが左端、1=黒）
     ///   - widthBytes: 1行あたりのバイト数
     ///   - height: 行数
+    ///   - scale: HiDPIスケールファクター（2=Retina 2x）。各ピクセルをscale×scaleに拡大する。
     /// - Returns: DCS〜STで囲まれたSixel文字列
-    static func encode(data: Data, widthBytes: Int, height: Int) -> String {
-        let pixelWidth = widthBytes * 8
+    static func encode(data: Data, widthBytes: Int, height: Int, scale: Int = 1) -> String {
+        let scale = max(scale, 1)
+        let pixelWidth = widthBytes * 8 * scale
+        let scaledHeight = height * scale
 
         var result = "\u{1B}P0;1;q"
         // ラスター属性: 1:1アスペクト比
-        result += "\"1;1;\(pixelWidth);\(height)"
+        result += "\"1;1;\(pixelWidth);\(scaledHeight)"
         // 色定義: #0 = 白 (背景色、P2=1により背景に適用)
         result += "#0;2;100;100;100"
         // 色定義: #1 = 黒 (前景色)
         result += "#1;2;0;0;0"
 
         // 6行ずつバンドに分割
-        let bandCount = (height + 5) / 6
+        let bandCount = (scaledHeight + 5) / 6
         for band in 0..<bandCount {
             // バンド内の有効行数からマスクを計算
-            let validRows = min(6, height - band * 6)
+            let validRows = min(6, scaledHeight - band * 6)
             let mask: UInt8 = (1 << validRows) - 1
 
             // バンド内の各列の前景Sixel値を計算
@@ -30,10 +33,12 @@ struct SixelEncoder {
             fgValues.reserveCapacity(pixelWidth)
             for col in 0..<pixelWidth {
                 var sixelValue: UInt8 = 0
+                let origCol = col / scale
                 for row in 0..<validRows {
-                    let y = band * 6 + row
-                    let byteIndex = y * widthBytes + col / 8
-                    let bitIndex = 7 - (col % 8)
+                    let scaledY = band * 6 + row
+                    let origY = scaledY / scale
+                    let byteIndex = origY * widthBytes + origCol / 8
+                    let bitIndex = 7 - (origCol % 8)
                     if byteIndex < data.count {
                         let bit = (data[byteIndex] >> bitIndex) & 1
                         if bit == 1 {
