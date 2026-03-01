@@ -116,6 +116,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case requestProcessIdResponse(d1: UInt8, d2: UInt8, d3: UInt8, d4: UInt8)
 
     // MARK: - 漢字関連 (FS)
+    /// 漢字アンダーラインの指定・解除 (FS - n)
+    case kanjiUnderline(UnderlineMode)
     /// 漢字コード体系の選択 (FS C n)
     case selectKanjiCodeSystem(KanjiCodeSystem)
 

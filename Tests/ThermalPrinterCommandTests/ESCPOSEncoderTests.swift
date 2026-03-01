@@ -202,6 +202,14 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.printerInfoRequest(type: 0x01)) == Data([0x1D, 0x49, 0x01]))
     }
 
+    @Test("Kanji underline")
+    func testKanjiUnderline() {
+        // FS - n (0x1C 0x2D n)
+        #expect(encoder.encode(.kanjiUnderline(.off)) == Data([0x1C, 0x2D, 0x00]))
+        #expect(encoder.encode(.kanjiUnderline(.single)) == Data([0x1C, 0x2D, 0x01]))
+        #expect(encoder.encode(.kanjiUnderline(.double)) == Data([0x1C, 0x2D, 0x02]))
+    }
+
     @Test("Kanji code system selection")
     func testKanjiCodeSystem() {
         // FS C n (0x1C 0x43 n)
@@ -438,6 +446,20 @@ struct ESCPOSRoundtripTests {
         let storeEncoded = encoder.encode(storeCommand)
         let storeDecoded = decoder.decode(storeEncoded)
         #expect(storeDecoded == [storeCommand])
+    }
+
+    @Test("Kanji underline roundtrip")
+    mutating func testKanjiUnderlineRoundtrip() {
+        let commands: [ESCPOSCommand] = [
+            .kanjiUnderline(.off),
+            .kanjiUnderline(.single),
+            .kanjiUnderline(.double)
+        ]
+        for command in commands {
+            let encoded = encoder.encode(command)
+            let decoded = decoder.decode(encoded)
+            #expect(decoded == [command])
+        }
     }
 
     @Test("Kanji code system roundtrip")

@@ -157,7 +157,7 @@ public struct TextReceiptRenderer {
         case .openCashDrawer:
             printCentered("[CASH DRAWER OPEN]")
 
-        case .boldOn, .boldOff, .underline, .reverseMode, .justification,
+        case .boldOn, .boldOff, .underline, .kanjiUnderline, .reverseMode, .justification,
              .characterSize, .barcodeHeight, .barcodeWidth, .barcodeHRIPosition,
              .qrCodeSize, .qrCodeErrorCorrection, .qrCodeStore,
              .selectFont, .barcodeHRIFont,

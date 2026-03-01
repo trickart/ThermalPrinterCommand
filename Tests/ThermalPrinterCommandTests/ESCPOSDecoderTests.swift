@@ -428,15 +428,36 @@ struct ESCPOSDecoderTests {
         }
     }
 
-    @Test("FS - n consumes 3 bytes")
+    @Test("FS - n decodes kanji underline")
     mutating func testFSHyphen() {
-        let data = Data([0x1C, 0x2D, 0x30])  // FS - '0'
-        let commands = decoder.decode(data)
-        #expect(commands.count == 1)
-        if case .unknown(let d) = commands[0] {
-            #expect(d == Data([0x1C, 0x2D, 0x30]))
+        // n = 0x30 ('0') → off
+        let data0 = Data([0x1C, 0x2D, 0x30])
+        let cmds0 = decoder.decode(data0)
+        #expect(cmds0 == [.kanjiUnderline(.off)])
+
+        // n = 1 → single
+        let data1 = Data([0x1C, 0x2D, 0x01])
+        let cmds1 = decoder.decode(data1)
+        #expect(cmds1 == [.kanjiUnderline(.single)])
+
+        // n = 2 → double
+        let data2 = Data([0x1C, 0x2D, 0x02])
+        let cmds2 = decoder.decode(data2)
+        #expect(cmds2 == [.kanjiUnderline(.double)])
+
+        // n = 0x32 ('2') → double
+        let data50 = Data([0x1C, 0x2D, 0x32])
+        let cmds50 = decoder.decode(data50)
+        #expect(cmds50 == [.kanjiUnderline(.double)])
+
+        // 不正な値 → unknown
+        let dataInvalid = Data([0x1C, 0x2D, 0xFF])
+        let cmdsInvalid = decoder.decode(dataInvalid)
+        #expect(cmdsInvalid.count == 1)
+        if case .unknown = cmdsInvalid[0] {
+            // OK
         } else {
-            Issue.record("Expected unknown command for FS -")
+            Issue.record("Expected unknown for invalid FS - value")
         }
     }
 
