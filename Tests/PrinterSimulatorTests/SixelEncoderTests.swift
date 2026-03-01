@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import ReceiptRenderer
+@testable import PrinterSimulator
 
 @Suite("SixelEncoder Tests")
 struct SixelEncoderTests {

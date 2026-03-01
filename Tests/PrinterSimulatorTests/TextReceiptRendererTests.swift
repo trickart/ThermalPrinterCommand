@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import ReceiptRenderer
+@testable import PrinterSimulator
 import ThermalPrinterCommand
 
 @Suite("TextReceiptRenderer Tests")
