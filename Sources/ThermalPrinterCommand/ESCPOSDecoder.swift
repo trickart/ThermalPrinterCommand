@@ -353,6 +353,10 @@ public struct ESCPOSDecoder: Sendable {
 
         case 0x2D:  // FS - n - 漢字アンダーライン
             guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            if let mode = ESCPOSCommand.UnderlineMode(rawValue: n) {
+                return (.kanjiUnderline(mode), 3)
+            }
             return (.unknown(Data(data[index..<index + 3])), 3)
 
         default:

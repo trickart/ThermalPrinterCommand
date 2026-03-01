@@ -26,6 +26,7 @@ public struct TextReceiptRenderer {
     static let ansiBoldOn = "\u{1B}[1m"
     static let ansiBoldOff = "\u{1B}[22m"
     static let ansiUnderlineOn = "\u{1B}[4m"
+    static let ansiDoubleUnderlineOn = "\u{1B}[21m"
     static let ansiUnderlineOff = "\u{1B}[24m"
     static let ansiReverseOn = "\u{1B}[7m"
     static let ansiReverseOff = "\u{1B}[27m"
@@ -157,7 +158,7 @@ public struct TextReceiptRenderer {
         case .openCashDrawer:
             printCentered("[CASH DRAWER OPEN]")
 
-        case .boldOn, .boldOff, .underline, .reverseMode, .justification,
+        case .boldOn, .boldOff, .underline, .kanjiUnderline, .reverseMode, .justification,
              .characterSize, .barcodeHeight, .barcodeWidth, .barcodeHRIPosition,
              .qrCodeSize, .qrCodeErrorCorrection, .qrCodeStore,
              .selectFont, .barcodeHRIFont,
@@ -196,13 +197,19 @@ public struct TextReceiptRenderer {
         var styled = content
         if ansiStyleEnabled {
             if status.bold { styled = Self.ansiBoldOn + styled }
-            if status.underlineMode != .off { styled = Self.ansiUnderlineOn + styled }
+            // 有効なアンダーラインモード: underlineMode と kanjiUnderlineMode の強い方を採用
+            let effectiveUnderline = max(status.underlineMode.rawValue, status.kanjiUnderlineMode.rawValue)
+            if effectiveUnderline == ESCPOSCommand.UnderlineMode.double.rawValue {
+                styled = Self.ansiDoubleUnderlineOn + styled
+            } else if effectiveUnderline == ESCPOSCommand.UnderlineMode.single.rawValue {
+                styled = Self.ansiUnderlineOn + styled
+            }
             if status.reverse { styled = Self.ansiReverseOn + styled }
         }
 
         let aligned = applyJustification(content, styled: styled, justification: status.justification)
 
-        let needsReset = ansiStyleEnabled && (status.bold || status.underlineMode != .off || status.reverse)
+        let needsReset = ansiStyleEnabled && (status.bold || status.underlineMode != .off || status.kanjiUnderlineMode != .off || status.reverse)
         if needsReset {
             outputLine(aligned + Self.ansiReset)
         } else {

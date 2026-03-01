@@ -51,6 +51,40 @@ struct TextReceiptRendererTests {
         #expect(lines[0].hasSuffix(TextReceiptRenderer.ansiReset))
     }
 
+    @Test("underline(.double) で ANSI ダブルアンダーラインコード付きで出力される")
+    func doubleUnderlineText() {
+        var (simulator, getLines) = makeSimulator()
+        _ = simulator.process([.underline(.double), .text(Data("Double".utf8)), .lineFeed])
+        let lines = getLines()
+        #expect(lines.count == 1)
+        #expect(lines[0].contains(TextReceiptRenderer.ansiDoubleUnderlineOn))
+        #expect(lines[0].contains("Double"))
+        #expect(lines[0].hasSuffix(TextReceiptRenderer.ansiReset))
+    }
+
+    @Test("kanjiUnderline(.single) でアンダーラインが出力される")
+    func kanjiUnderlineSingle() {
+        var (simulator, getLines) = makeSimulator()
+        _ = simulator.process([.kanjiUnderline(.single), .text(Data("漢字".utf8)), .lineFeed])
+        let lines = getLines()
+        #expect(lines.count == 1)
+        #expect(lines[0].contains(TextReceiptRenderer.ansiUnderlineOn))
+        #expect(lines[0].contains("漢字"))
+        #expect(lines[0].hasSuffix(TextReceiptRenderer.ansiReset))
+    }
+
+    @Test("underlineMode と kanjiUnderlineMode の両方有効時に強い方(double)が適用される")
+    func combinedUnderlineModes() {
+        var (simulator, getLines) = makeSimulator()
+        _ = simulator.process([.underline(.single), .kanjiUnderline(.double), .text(Data("Combined".utf8)), .lineFeed])
+        let lines = getLines()
+        #expect(lines.count == 1)
+        #expect(lines[0].contains(TextReceiptRenderer.ansiDoubleUnderlineOn))
+        #expect(!lines[0].contains(TextReceiptRenderer.ansiUnderlineOn))
+        #expect(lines[0].contains("Combined"))
+        #expect(lines[0].hasSuffix(TextReceiptRenderer.ansiReset))
+    }
+
     // MARK: - 反転
 
     @Test("reverseMode(true) で ANSI 反転コード付きで出力される")
