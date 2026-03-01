@@ -221,6 +221,8 @@ public struct TextReceiptRenderer {
              .rotate90, .upsideDown,
              .selectKanjiCodeSystem,
              .realtimeStatusRequest,
+             .printerInfoRequest,
+             .enableAutomaticStatus,
              .requestProcessIdResponse:
             break  // 表示には影響しない設定コマンド
 
