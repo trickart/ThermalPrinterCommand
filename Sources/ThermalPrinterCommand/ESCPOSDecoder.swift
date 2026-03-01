@@ -154,7 +154,7 @@ public struct ESCPOSDecoder: Sendable {
         case 0x45:  // ESC E n - 太字
             guard index + 2 < data.count else { return nil }
             let n = data[index + 2]
-            return (n == 0 ? .boldOff : .boldOn, 3)
+            return (n & 1 != 0 ? .boldOn : .boldOff, 3)
 
         case 0x2D:  // ESC - n - アンダーライン
             guard index + 2 < data.count else { return nil }
@@ -212,6 +212,14 @@ public struct ESCPOSDecoder: Sendable {
             let t2 = data[index + 4]
             return (.openCashDrawer(pin: m, onTime: t1, offTime: t2), 5)
 
+        case 0x74:  // ESC t n - 文字コードテーブル選択
+            guard index + 2 < data.count else { return nil }
+            return (.unknown(Data(data[index..<index + 3])), 3)
+
+        case 0x52:  // ESC R n - 国際文字セット選択
+            guard index + 2 < data.count else { return nil }
+            return (.unknown(Data(data[index..<index + 3])), 3)
+
         default:
             return (.unknown(Data(data[index..<min(index + 2, data.count)])), 2)
         }
@@ -235,7 +243,7 @@ public struct ESCPOSDecoder: Sendable {
         case 0x42:  // GS B n - 反転
             guard index + 2 < data.count else { return nil }
             let n = data[index + 2]
-            return (.reverseMode(enabled: n != 0), 3)
+            return (.reverseMode(enabled: n & 1 != 0), 3)
 
         case 0x4C:  // GS L nL nH - 左マージン
             guard index + 3 < data.count else { return nil }
@@ -341,6 +349,10 @@ public struct ESCPOSDecoder: Sendable {
             if let codeSystem = ESCPOSCommand.KanjiCodeSystem(rawValue: n) {
                 return (.selectKanjiCodeSystem(codeSystem), 3)
             }
+            return (.unknown(Data(data[index..<index + 3])), 3)
+
+        case 0x2D:  // FS - n - 漢字アンダーライン
+            guard index + 2 < data.count else { return nil }
             return (.unknown(Data(data[index..<index + 3])), 3)
 
         default:

@@ -153,6 +153,20 @@ public extension ESCPOSCommand {
         case off = 0
         case single = 1
         case double = 2
+
+        /// '0', '1', '2' の文字コードからも初期化可能
+        public init?(rawValue: UInt8) {
+            switch rawValue {
+            case 0, 48:  // 0 or '0'
+                self = .off
+            case 1, 49:  // 1 or '1'
+                self = .single
+            case 2, 50:  // 2 or '2'
+                self = .double
+            default:
+                return nil
+            }
+        }
     }
 
     enum Justification: UInt8, Sendable {

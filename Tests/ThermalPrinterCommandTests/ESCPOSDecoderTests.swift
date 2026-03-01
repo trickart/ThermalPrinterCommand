@@ -401,4 +401,66 @@ struct ESCPOSDecoderTests {
             Issue.record("Expected unknown command")
         }
     }
+
+    // MARK: - receiptio 互換性テスト
+
+    @Test("ESC t n consumes 3 bytes")
+    mutating func testESCt() {
+        let data = Data([0x1B, 0x74, 0x01])  // ESC t 1
+        let commands = decoder.decode(data)
+        #expect(commands.count == 1)
+        if case .unknown(let d) = commands[0] {
+            #expect(d == Data([0x1B, 0x74, 0x01]))
+        } else {
+            Issue.record("Expected unknown command for ESC t")
+        }
+    }
+
+    @Test("ESC R n consumes 3 bytes")
+    mutating func testESCR() {
+        let data = Data([0x1B, 0x52, 0x08])  // ESC R 8
+        let commands = decoder.decode(data)
+        #expect(commands.count == 1)
+        if case .unknown(let d) = commands[0] {
+            #expect(d == Data([0x1B, 0x52, 0x08]))
+        } else {
+            Issue.record("Expected unknown command for ESC R")
+        }
+    }
+
+    @Test("FS - n consumes 3 bytes")
+    mutating func testFSHyphen() {
+        let data = Data([0x1C, 0x2D, 0x30])  // FS - '0'
+        let commands = decoder.decode(data)
+        #expect(commands.count == 1)
+        if case .unknown(let d) = commands[0] {
+            #expect(d == Data([0x1C, 0x2D, 0x30]))
+        } else {
+            Issue.record("Expected unknown command for FS -")
+        }
+    }
+
+    @Test("ESC E 0x30 is boldOff (LSB check)")
+    mutating func testBoldLSB() {
+        let data = Data([0x1B, 0x45, 0x30])  // ESC E '0' (0x30)
+        let commands = decoder.decode(data)
+        #expect(commands == [.boldOff])
+    }
+
+    @Test("GS B 0x30 is reverseMode disabled (LSB check)")
+    mutating func testReverseLSB() {
+        let data = Data([0x1D, 0x42, 0x30])  // GS B '0' (0x30)
+        let commands = decoder.decode(data)
+        #expect(commands == [.reverseMode(enabled: false)])
+    }
+
+    @Test("ESC - 0x30 is underline off (ASCII value)")
+    mutating func testUnderlineASCII() {
+        let off = Data([0x1B, 0x2D, 0x30])   // ESC - '0'
+        let single = Data([0x1B, 0x2D, 0x31])  // ESC - '1'
+        let double = Data([0x1B, 0x2D, 0x32])  // ESC - '2'
+        #expect(decoder.decode(off) == [.underline(.off)])
+        #expect(decoder.decode(single) == [.underline(.single)])
+        #expect(decoder.decode(double) == [.underline(.double)])
+    }
 }
