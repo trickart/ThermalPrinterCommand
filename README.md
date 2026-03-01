@@ -13,7 +13,7 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/trickart/ThermalPrinterCommand.git", from: "0.0.1")
+    .package(url: "https://github.com/trickart/ThermalPrinterCommand.git", from: "0.0.3")
 ]
 ```
 
