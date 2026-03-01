@@ -164,6 +164,12 @@ public struct ESCPOSEncoder: Sendable {
         case .realtimeStatusRequest(let type):
             return Data([Self.DLE, 0x04, type])
 
+        case .printerInfoRequest(let type):
+            return Data([Self.GS, 0x49, type])
+
+        case .enableAutomaticStatus(let flags):
+            return Data([Self.GS, 0x61, flags])
+
         case .requestProcessIdResponse(let d1, let d2, let d3, let d4):
             // GS ( H pL pH fn m d1 d2 d3 d4
             // pL=6, pH=0, fn=48(0x30), m=48(0x30)

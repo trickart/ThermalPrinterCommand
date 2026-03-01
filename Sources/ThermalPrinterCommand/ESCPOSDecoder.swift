@@ -309,6 +309,16 @@ public struct ESCPOSDecoder: Sendable {
             }
             return (.unknown(Data(data[index..<min(index + 3, data.count)])), 3)
 
+        case 0x49:  // GS I n - プリンター情報取得
+            guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            return (.printerInfoRequest(type: n), 3)
+
+        case 0x61:  // GS a n - 自動ステータス送信
+            guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            return (.enableAutomaticStatus(flags: n), 3)
+
         case 0x76:  // GS v 0 - ラスター画像
             return decodeRasterImage(data, from: index)
 
