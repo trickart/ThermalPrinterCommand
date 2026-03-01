@@ -90,6 +90,14 @@ public struct ESCPOSPrinterSimulator {
             // 基本値 0x12 (byte & 0x93 == 0x12 を満たす)
             return Data([0x12])
 
+        case .printerInfoRequest:
+            // GS I n: プリンター情報レスポンス
+            // receiptio互換: 0x5f + モデル名 + NUL
+            var response = Data([0x5f])
+            response.append(contentsOf: "tpsim".utf8)
+            response.append(0x00)
+            return response
+
         case .enableAutomaticStatus:
             // receiptio互換: 4バイトのステータスレスポンス
             return Data([0x10, 0x00, 0x00, 0x00])

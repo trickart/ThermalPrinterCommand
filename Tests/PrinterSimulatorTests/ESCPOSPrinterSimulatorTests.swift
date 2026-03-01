@@ -50,6 +50,18 @@ struct ESCPOSPrinterSimulatorTests {
         #expect(responses[0] == Data([0x37, 0x25, 0x30, 0x00, 0x30, 0x30, 0x30, 0x31, 0x00]))
     }
 
+    @Test("printerInfoRequest はモデル情報を返す")
+    func printerInfoResponse() {
+        var simulator = makeSimulator()
+        let responses = simulator.process([.printerInfoRequest(type: 0x42)])
+        #expect(responses.count == 1)
+        // 0x5f + "tpsim" + 0x00
+        #expect(responses[0][0] == 0x5f)
+        #expect(responses[0].last == 0x00)
+        let modelName = String(data: responses[0][1..<responses[0].count - 1], encoding: .utf8)
+        #expect(modelName == "tpsim")
+    }
+
     @Test("レスポンスが不要なコマンドでは空の配列を返す")
     func noResponseForNonStatusCommands() {
         var simulator = makeSimulator()
