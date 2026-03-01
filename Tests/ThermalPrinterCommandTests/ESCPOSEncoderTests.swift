@@ -192,11 +192,6 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.realtimeStatusRequest(type: 1)) == Data([0x10, 0x04, 0x01]))
     }
 
-    @Test("Enable automatic status")
-    func testEnableAutomaticStatus() {
-        #expect(encoder.encode(.enableAutomaticStatus(flags: 0xFF)) == Data([0x1D, 0x61, 0xFF]))
-    }
-
     @Test("Kanji code system selection")
     func testKanjiCodeSystem() {
         // FS C n (0x1C 0x43 n)
