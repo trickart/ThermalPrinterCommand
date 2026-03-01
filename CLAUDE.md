@@ -20,11 +20,11 @@ swift test --filter <test_name>    # 特定テスト実行
 2ターゲット構成（外部依存なし）:
 
 - **ThermalPrinterCommand** (Library): ESC/POSコマンドのエンコード・デコード
-- **ReceiptRenderer** (Library, depends: ThermalPrinterCommand): ESC/POSコマンドのテキスト表示
+- **PrinterSimulator** (Library, depends: ThermalPrinterCommand): ESC/POSプリンターシミュレーター（状態管理・レスポンス生成・テキスト描画）
 
 ## Tests
 
 Swift Testing フレームワーク（`@Suite`, `@Test`）使用:
 
 - **ThermalPrinterCommandTests**: ESCPOSEncoder/Decoderのエンコード・デコード検証
-- **ReceiptRendererTests**: TextReceiptRenderer, SixelEncoder, QRCodeRasterizerのテスト
+- **PrinterSimulatorTests**: ESCPOSPrinterSimulator, TextReceiptRenderer, SixelEncoder, QRCodeRasterizerのテスト
