@@ -15,23 +15,10 @@ public struct TextReceiptRenderer {
     /// HiDPIディスプレイのスケールファクター（2=Retina 2x）。Sixel画像を拡大して表示する。
     public var displayScale: Int = 1
 
-    // MARK: - Printer State
+    // MARK: - Line Buffer
 
-    private var bold = false
-    private var underlineMode: ESCPOSCommand.UnderlineMode = .off
-    private var reverse = false
-    private var justification: ESCPOSCommand.Justification = .left
-    private var widthMultiplier: UInt8 = 1
-    private var heightMultiplier: UInt8 = 1
     private var lineBuffer = ""
-    private var barcodeHeight: UInt8 = 162
-    private var barcodeWidthMultiplier: UInt8 = 3
-    private var barcodeHRIPosition: ESCPOSCommand.HRIPosition = .notPrinted
-    private var qrCodeModuleSize: UInt8 = 3
-    private var qrCodeErrorCorrection: ESCPOSCommand.QRErrorCorrectionLevel = .l
-    private var qrCodeStoredData: Data?
-
-    private let paperWidth = 48  // 標準的な58mmプリンタの文字幅
+    let paperWidth = 48  // 標準的な58mmプリンタの文字幅
 
     // MARK: - ANSI Escape Codes
 
@@ -50,18 +37,12 @@ public struct TextReceiptRenderer {
         self.sixelEnabled = sixelEnabled
     }
 
-    // MARK: - Rendering
+    // MARK: - Rendering (with simulator state)
 
-    public mutating func render(_ commands: [ESCPOSCommand]) {
-        for command in commands {
-            render(command)
-        }
-    }
-
-    public mutating func render(_ command: ESCPOSCommand) {
+    public mutating func render(_ command: ESCPOSCommand, status: PrinterStatus) {
         switch command {
         case .initialize:
-            resetState()
+            lineBuffer = ""
             printCentered("[PRINTER INITIALIZED]")
 
         case .text(let data):
@@ -69,72 +50,53 @@ public struct TextReceiptRenderer {
             lineBuffer += text
 
         case .lineFeed:
-            flushLine()
+            flushLine(status: status)
 
         case .carriageReturn:
-            break  // 通常LFと組み合わせ、単独では無視
+            break
 
         case .horizontalTab:
             lineBuffer += ("\t")
 
         case .printAndFeed:
-            flushLine()
+            flushLine(status: status)
 
         case .printAndReverseFeed:
-            flushLine()
+            flushLine(status: status)
 
         case .feedLines(let count):
-            flushLine()
+            flushLine(status: status)
             for _ in 1..<count {
                 outputLine("")
             }
 
-        case .boldOn:
-            bold = true
-
-        case .boldOff:
-            bold = false
-
-        case .underline(let mode):
-            underlineMode = mode
-
-        case .reverseMode(let enabled):
-            reverse = enabled
-
-        case .justification(let j):
-            justification = j
-
-        case .characterSize(let width, let height):
-            widthMultiplier = width
-            heightMultiplier = height
-
         case .cut(let mode):
-            flushLine()
+            flushLine(status: status)
             let modeStr = (mode == .full || mode == .fullWithFeed) ? "FULL" : "PARTIAL"
             printCentered("--- ✂ \(modeStr) CUT ---")
 
         case .cutWithFeed(let mode, _):
-            flushLine()
+            flushLine(status: status)
             let modeStr = (mode == .full || mode == .fullWithFeed) ? "FULL" : "PARTIAL"
             printCentered("--- ✂ \(modeStr) CUT ---")
 
         case .barcode(let type, let data):
-            flushLine()
-            let moduleWidth = effectiveBarcodeModuleWidth(type: type, data: data)
+            flushLine(status: status)
+            let moduleWidth = effectiveBarcodeModuleWidth(type: type, data: data, status: status)
             if sixelEnabled,
                let image = BarcodeRasterizer.rasterize(
                    type: type,
                    data: data,
                    moduleWidth: moduleWidth,
-                   height: Int(barcodeHeight)
+                   height: Int(status.barcodeHeight)
                ) {
                 let dataStr = String(data: data, encoding: .ascii) ?? data.map { String(format: "%02X", $0) }.joined()
-                if barcodeHRIPosition == .above || barcodeHRIPosition == .both {
+                if status.barcodeHRIPosition == .above || status.barcodeHRIPosition == .both {
                     printCentered(dataStr)
                 }
                 let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height, scale: displayScale)
-                outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes))
-                if barcodeHRIPosition == .below || barcodeHRIPosition == .both {
+                outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes, justification: status.justification))
+                if status.barcodeHRIPosition == .below || status.barcodeHRIPosition == .both {
                     printCentered(dataStr)
                 }
             } else {
@@ -143,42 +105,38 @@ public struct TextReceiptRenderer {
                 printCentered("[\(typeName)] ||| \(dataStr) |||")
             }
 
-        case .qrCodeStore(let data):
-            qrCodeStoredData = data
-
         case .qrCodePrint:
-            flushLine()
-            if let data = qrCodeStoredData {
+            flushLine(status: status)
+            if let data = status.qrCodeStoredData {
                 if sixelEnabled,
                    let image = QRCodeRasterizer.rasterize(
                        data: data,
-                       ecLevel: Int(qrCodeErrorCorrection.rawValue) - 48,
-                       moduleSize: Int(qrCodeModuleSize)
+                       ecLevel: Int(status.qrCodeErrorCorrection.rawValue) - 48,
+                       moduleSize: Int(status.qrCodeModuleSize)
                    ) {
                     let sixel = SixelEncoder.encode(data: image.data, widthBytes: image.widthBytes, height: image.height, scale: displayScale)
-                    outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes))
+                    outputLine(applySixelJustification(sixel, imageCharWidth: image.widthBytes, justification: status.justification))
                 } else {
                     let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .shiftJIS) ?? "<binary>"
                     printCentered("[QR CODE: \(content)]")
                 }
-                qrCodeStoredData = nil
             }
 
         case .rasterImage(_, let width, let height, let data):
-            flushLine()
+            flushLine(status: status)
             if sixelEnabled {
                 let sixel = SixelEncoder.encode(data: data, widthBytes: Int(width), height: Int(height), scale: displayScale)
-                outputLine(applySixelJustification(sixel, imageCharWidth: Int(width)))
+                outputLine(applySixelJustification(sixel, imageCharWidth: Int(width), justification: status.justification))
             } else {
                 printCentered("[IMAGE: \(width * 8)x\(height) dots]")
             }
 
         case .graphicsStore(_, _, _, _, let width, let height, let data):
-            flushLine()
+            flushLine(status: status)
             if sixelEnabled {
                 let widthBytes = (Int(width) + 7) / 8
                 let sixel = SixelEncoder.encode(data: data, widthBytes: widthBytes, height: Int(height), scale: displayScale)
-                outputLine(applySixelJustification(sixel, imageCharWidth: widthBytes))
+                outputLine(applySixelJustification(sixel, imageCharWidth: widthBytes, justification: status.justification))
             } else {
                 printCentered("[IMAGE: \(width)x\(height) dots]")
             }
@@ -187,11 +145,11 @@ public struct TextReceiptRenderer {
             break  // graphicsStoreで既に表示済み
 
         case .nvGraphicsPrint(let kc1, let kc2, let scaleX, let scaleY):
-            flushLine()
+            flushLine(status: status)
             if sixelEnabled {
                 let logo = Self.generateNVGraphicsPlaceholder(text: "\(kc1):\(kc2)", scaleX: Int(scaleX), scaleY: Int(scaleY))
                 let sixel = SixelEncoder.encode(data: logo.data, widthBytes: logo.widthBytes, height: logo.height, scale: displayScale)
-                outputLine(applySixelJustification(sixel, imageCharWidth: logo.widthBytes))
+                outputLine(applySixelJustification(sixel, imageCharWidth: logo.widthBytes, justification: status.justification))
             } else {
                 printCentered("[NV GRAPHICS: key=(\(kc1),\(kc2)) scale=\(scaleX)x\(scaleY)]")
             }
@@ -199,22 +157,10 @@ public struct TextReceiptRenderer {
         case .openCashDrawer:
             printCentered("[CASH DRAWER OPEN]")
 
-        case .barcodeHeight(let dots):
-            barcodeHeight = dots
-
-        case .barcodeWidth(let multiplier):
-            barcodeWidthMultiplier = multiplier
-
-        case .barcodeHRIPosition(let position):
-            barcodeHRIPosition = position
-
-        case .qrCodeSize(let size):
-            qrCodeModuleSize = size
-
-        case .qrCodeErrorCorrection(let level):
-            qrCodeErrorCorrection = level
-
-        case .selectFont, .barcodeHRIFont,
+        case .boldOn, .boldOff, .underline, .reverseMode, .justification,
+             .characterSize, .barcodeHeight, .barcodeWidth, .barcodeHRIPosition,
+             .qrCodeSize, .qrCodeErrorCorrection, .qrCodeStore,
+             .selectFont, .barcodeHRIFont,
              .qrCodeModel,
              .leftMargin, .printingWidth,
              .defaultLineSpacing, .lineSpacing,
@@ -224,7 +170,7 @@ public struct TextReceiptRenderer {
              .printerInfoRequest,
              .enableAutomaticStatus,
              .requestProcessIdResponse:
-            break  // 表示には影響しない設定コマンド
+            break  // 状態はシミュレーターが管理
 
         case .unknown, .rawData:
             break
@@ -233,8 +179,7 @@ public struct TextReceiptRenderer {
 
     // MARK: - Private Helpers
 
-    private func decodeText(_ data: Data) -> String {
-        // UTF-8を試し、失敗したらShift-JIS
+    func decodeText(_ data: Data) -> String {
         if let str = String(data: data, encoding: .utf8) {
             return str
         }
@@ -244,23 +189,20 @@ public struct TextReceiptRenderer {
         return String(data: data, encoding: .ascii) ?? ""
     }
 
-    private mutating func flushLine() {
+    private mutating func flushLine(status: PrinterStatus) {
         let content = lineBuffer
         lineBuffer = ""
 
-        // ANSI装飾を適用
         var styled = content
         if ansiStyleEnabled {
-            if bold { styled = Self.ansiBoldOn + styled }
-            if underlineMode != .off { styled = Self.ansiUnderlineOn + styled }
-            if reverse { styled = Self.ansiReverseOn + styled }
+            if status.bold { styled = Self.ansiBoldOn + styled }
+            if status.underlineMode != .off { styled = Self.ansiUnderlineOn + styled }
+            if status.reverse { styled = Self.ansiReverseOn + styled }
         }
 
-        // 配置を適用
-        let aligned = applyJustification(content, styled: styled)
+        let aligned = applyJustification(content, styled: styled, justification: status.justification)
 
-        // リセットを付加して出力
-        let needsReset = ansiStyleEnabled && (bold || underlineMode != .off || reverse)
+        let needsReset = ansiStyleEnabled && (status.bold || status.underlineMode != .off || status.reverse)
         if needsReset {
             outputLine(aligned + Self.ansiReset)
         } else {
@@ -268,7 +210,7 @@ public struct TextReceiptRenderer {
         }
     }
 
-    private func applyJustification(_ raw: String, styled: String) -> String {
+    private func applyJustification(_ raw: String, styled: String, justification: ESCPOSCommand.Justification) -> String {
         let visibleLength = raw.count
         guard visibleLength < paperWidth else { return styled }
 
@@ -284,7 +226,7 @@ public struct TextReceiptRenderer {
         }
     }
 
-    private func applySixelJustification(_ sixel: String, imageCharWidth: Int) -> String {
+    private func applySixelJustification(_ sixel: String, imageCharWidth: Int, justification: ESCPOSCommand.Justification) -> String {
         guard imageCharWidth < paperWidth else { return sixel }
 
         switch justification {
@@ -309,29 +251,12 @@ public struct TextReceiptRenderer {
         }
     }
 
-    private mutating func resetState() {
-        bold = false
-        underlineMode = .off
-        reverse = false
-        justification = .left
-        widthMultiplier = 1
-        heightMultiplier = 1
-        lineBuffer = ""
-        barcodeHeight = 162
-        barcodeWidthMultiplier = 3
-        barcodeHRIPosition = .notPrinted
-        qrCodeModuleSize = 3
-        qrCodeErrorCorrection = .l
-        qrCodeStoredData = nil
-    }
-
     // MARK: - NV Graphics Placeholder
 
     /// 指定テキストを描いたダミービットマップを生成する
     private static func generateNVGraphicsPlaceholder(text: String, scaleX: Int, scaleY: Int) -> (data: Data, widthBytes: Int, height: Int) {
         let glyphs = text.compactMap { pixelFont[$0] }
         guard !glyphs.isEmpty else {
-            // フォールバック: 1×1 の黒ドット
             return (Data([0x80]), 1, 1)
         }
 
@@ -354,11 +279,9 @@ public struct TextReceiptRenderer {
             for dy in 0..<sy { for dx in 0..<sx { setPixel(bx * sx + dx, by * sy + dy) } }
         }
 
-        // 枠線
         for x in 0..<baseW { fill(bx: x, by: 0); fill(bx: x, by: baseH - 1) }
         for y in 0..<baseH { fill(bx: 0, by: y); fill(bx: baseW - 1, by: y) }
 
-        // 文字描画
         let ox = border + pad, oy = border + pad
         for (gi, glyph) in glyphs.enumerated() {
             let gx = ox + gi * (charW + gap)
@@ -374,7 +297,6 @@ public struct TextReceiptRenderer {
         return (bitmap, widthBytes, h)
     }
 
-    // 5×7 ピクセルフォント（MSBが左端、幅5ビット）
     private static let pixelFont: [Character: [UInt8]] = [
         "0": [0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
         "1": [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
@@ -389,26 +311,21 @@ public struct TextReceiptRenderer {
         ":": [0b00000, 0b00100, 0b00100, 0b00000, 0b00100, 0b00100, 0b00000],
     ]
 
-    /// バーコードが用紙幅に収まるよう moduleWidth を自動調整する。
-    /// cellPixelWidth が未設定（0）の場合は barcodeWidthMultiplier をそのまま返す。
-    private func effectiveBarcodeModuleWidth(type: ESCPOSCommand.BarcodeType, data: Data) -> Int {
-        let moduleWidth = Int(barcodeWidthMultiplier)
+    private func effectiveBarcodeModuleWidth(type: ESCPOSCommand.BarcodeType, data: Data, status: PrinterStatus) -> Int {
+        let moduleWidth = Int(status.barcodeWidthMultiplier)
         let paperPixelWidth = cellPixelWidth * paperWidth
         let scale = max(displayScale, 1)
         guard paperPixelWidth > 0, moduleWidth > 1 else { return moduleWidth }
 
-        // height=1 で試行ラスタライズし、ピクセル幅だけ算出する
         guard let trial = BarcodeRasterizer.rasterize(
             type: type, data: data, moduleWidth: moduleWidth, height: 1
         ) else {
             return moduleWidth
         }
 
-        // HiDPIスケーリング後の実際の表示幅で判定する
         let imagePixelWidth = trial.widthBytes * 8
         guard imagePixelWidth * scale > paperPixelWidth else { return moduleWidth }
 
-        // moduleCount ≈ imagePixelWidth / moduleWidth → 収まる最大の moduleWidth を算出
         let moduleCount = imagePixelWidth / moduleWidth
         guard moduleCount > 0 else { return moduleWidth }
         return max(1, paperPixelWidth / (moduleCount * scale))

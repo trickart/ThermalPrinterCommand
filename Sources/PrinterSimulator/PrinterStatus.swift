@@ -1,0 +1,61 @@
+import Foundation
+import ThermalPrinterCommand
+
+/// プリンターの状態を表す構造体
+public struct PrinterStatus: Sendable {
+    // MARK: - Hardware Status
+
+    public var isOnline: Bool = true
+    public var isPaperEmpty: Bool = false
+    public var isCoverOpen: Bool = false
+    public var isPaperNearEnd: Bool = false
+    public var hasError: Bool = false
+
+    // MARK: - Rendering State
+
+    public var bold = false
+    public var underlineMode: ESCPOSCommand.UnderlineMode = .off
+    public var reverse = false
+    public var justification: ESCPOSCommand.Justification = .left
+    public var widthMultiplier: UInt8 = 1
+    public var heightMultiplier: UInt8 = 1
+    public var barcodeHeight: UInt8 = 162
+    public var barcodeWidthMultiplier: UInt8 = 3
+    public var barcodeHRIPosition: ESCPOSCommand.HRIPosition = .notPrinted
+    public var qrCodeModuleSize: UInt8 = 3
+    public var qrCodeErrorCorrection: ESCPOSCommand.QRErrorCorrectionLevel = .l
+    public var qrCodeStoredData: Data?
+
+    public static let normal = PrinterStatus()
+
+    public init(
+        isOnline: Bool = true,
+        isPaperEmpty: Bool = false,
+        isCoverOpen: Bool = false,
+        isPaperNearEnd: Bool = false,
+        hasError: Bool = false
+    ) {
+        self.isOnline = isOnline
+        self.isPaperEmpty = isPaperEmpty
+        self.isCoverOpen = isCoverOpen
+        self.isPaperNearEnd = isPaperNearEnd
+        self.hasError = hasError
+    }
+
+    // MARK: - Reset
+
+    public mutating func resetRenderingState() {
+        bold = false
+        underlineMode = .off
+        reverse = false
+        justification = .left
+        widthMultiplier = 1
+        heightMultiplier = 1
+        barcodeHeight = 162
+        barcodeWidthMultiplier = 3
+        barcodeHRIPosition = .notPrinted
+        qrCodeModuleSize = 3
+        qrCodeErrorCorrection = .l
+        qrCodeStoredData = nil
+    }
+}
