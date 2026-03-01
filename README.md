@@ -13,7 +13,7 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/trickart/ThermalPrinterCommand.git", from: "0.0.1")
+    .package(url: "https://github.com/trickart/ThermalPrinterCommand.git", from: "0.0.3")
 ]
 ```
 
@@ -22,7 +22,7 @@ dependencies: [
 | ターゲット | 説明 |
 |---|---|
 | **ThermalPrinterCommand** | ESC/POS コマンドの型定義・エンコード・デコード |
-| **ReceiptRenderer** | ESC/POS コマンドを表示するレンダラー |
+| **PrinterSimulator** | ESC/POS プリンターシミュレーター・レンダラー |
 
 ## 使い方
 
@@ -66,27 +66,23 @@ for command in commands {
 }
 ```
 
-### レンダリング
+### シミュレーター
 
-`TextReceiptRenderer` で ESC/POS コマンド列をターミナルやプレーンテキストとして描画:
+`ESCPOSPrinterSimulator` でプリンターの状態管理・レスポンス生成・テキスト描画を一括処理:
 
 ```swift
-import ReceiptRenderer
+import PrinterSimulator
 
-var renderer = TextReceiptRenderer()
-renderer.render(commands)
+var renderer = TextReceiptRenderer(ansiStyleEnabled: true, sixelEnabled: true)
+var simulator = ESCPOSPrinterSimulator(renderer: renderer)
+let responses = simulator.process(commands)
 ```
 
 ターミナル以外（ファイル出力等）で使う場合は ANSI 装飾を無効化:
 
 ```swift
 var renderer = TextReceiptRenderer(ansiStyleEnabled: false)
-```
-
-Sixel 対応ターミナルでバーコード・QRコード・画像をグラフィカルに表示:
-
-```swift
-var renderer = TextReceiptRenderer(ansiStyleEnabled: true, sixelEnabled: true)
+var simulator = ESCPOSPrinterSimulator(renderer: renderer)
 ```
 
 ## ライセンス
