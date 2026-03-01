@@ -4,7 +4,7 @@
 
 import Testing
 import Foundation
-@testable import ReceiptRenderer
+@testable import PrinterSimulator
 
 #if canImport(CoreGraphics) && canImport(CoreImage) && canImport(Vision)
 import CoreImage

@@ -11,8 +11,8 @@ let package = Package(
             targets: ["ThermalPrinterCommand"]
         ),
         .library(
-            name: "ReceiptRenderer",
-            targets: ["ReceiptRenderer"]
+            name: "PrinterSimulator",
+            targets: ["PrinterSimulator"]
         ),
     ],
     targets: [
@@ -20,7 +20,7 @@ let package = Package(
             name: "ThermalPrinterCommand"
         ),
         .target(
-            name: "ReceiptRenderer",
+            name: "PrinterSimulator",
             dependencies: ["ThermalPrinterCommand"]
         ),
         .testTarget(
@@ -28,8 +28,8 @@ let package = Package(
             dependencies: ["ThermalPrinterCommand"]
         ),
         .testTarget(
-            name: "ReceiptRendererTests",
-            dependencies: ["ReceiptRenderer"]
+            name: "PrinterSimulatorTests",
+            dependencies: ["PrinterSimulator"]
         ),
     ]
 )
