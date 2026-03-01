@@ -533,6 +533,34 @@ struct TextReceiptRendererTests {
         #expect(sixel1.count < sixel2.count)
     }
 
+    // MARK: - コードページ
+
+    @Test("ESC t 1 後の 0x95 バイトがコードページ1(カタカナ)の ─ としてデコードされる")
+    func codePage1SeparatorAfterCodeTableSelection() {
+        var (simulator, getLines) = makeSimulator(ansiStyleEnabled: false)
+        _ = simulator.process([
+            .selectCharacterCodeTable(page: 1),
+            .text(Data(repeating: 0x95, count: 48)),
+            .lineFeed,
+        ])
+        let lines = getLines()
+        #expect(!lines[0].contains("封"))
+        #expect(!lines[0].contains("ò"))
+        #expect(lines[0] == String(repeating: "─", count: 48))
+    }
+
+    @Test("characterCodeTable が 0 の場合は Shift_JIS が優先される")
+    func defaultCodeTableUsesShiftJIS() {
+        var (simulator, getLines) = makeSimulator(ansiStyleEnabled: false)
+        // 0x95 0x95 は Shift_JIS で「封」
+        _ = simulator.process([
+            .text(Data(repeating: 0x95, count: 2)),
+            .lineFeed,
+        ])
+        let lines = getLines()
+        #expect(lines[0].contains("封"))
+    }
+
     // MARK: - HiDPIスケーリング
 
     @Test("displayScale=2: rasterImageのSixel出力が2倍にスケールされる")

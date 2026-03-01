@@ -79,6 +79,10 @@ public struct ESCPOSPrinterSimulator {
             status.qrCodeErrorCorrection = level
         case .qrCodeStore(let data):
             status.qrCodeStoredData = data
+        case .printingWidth(let dots):
+            status.printingWidth = dots
+        case .selectCharacterCodeTable(let page):
+            status.characterCodeTable = page
         default:
             break
         }
@@ -107,6 +111,10 @@ public struct ESCPOSPrinterSimulator {
         case .requestProcessIdResponse(let d1, let d2, let d3, let d4):
             // Header(37H 25H) + fn(30H) + status(00H) + d1-d4 + NUL(00H)
             return Data([0x37, 0x25, 0x30, 0x00, d1, d2, d3, d4, 0x00])
+
+        case .transmitPrintStatus:
+            // オンライン・正常ステータス
+            return Data([0x12])
 
         default:
             return nil

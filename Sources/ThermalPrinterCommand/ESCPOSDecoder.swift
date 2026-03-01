@@ -140,6 +140,18 @@ public struct ESCPOSDecoder: Sendable {
         let cmd = data[index + 1]
 
         switch cmd {
+        case 0x20:  // ESC SP n - 文字間スペース設定
+            guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            return (.characterSpacing(dots: n), 3)
+
+        case 0x24:  // ESC $ nL nH - 絶対位置指定
+            guard index + 3 < data.count else { return nil }
+            let nL = data[index + 2]
+            let nH = data[index + 3]
+            let dots = UInt16(nL) | (UInt16(nH) << 8)
+            return (.absolutePosition(dots: dots), 4)
+
         case 0x40:  // ESC @ - 初期化
             return (.initialize, 2)
 
@@ -214,9 +226,21 @@ public struct ESCPOSDecoder: Sendable {
 
         case 0x74:  // ESC t n - 文字コードテーブル選択
             guard index + 2 < data.count else { return nil }
-            return (.unknown(Data(data[index..<index + 3])), 3)
+            let n = data[index + 2]
+            return (.selectCharacterCodeTable(page: n), 3)
 
         case 0x52:  // ESC R n - 国際文字セット選択
+            guard index + 2 < data.count else { return nil }
+            return (.unknown(Data(data[index..<index + 3])), 3)
+
+        case 0x5C:  // ESC \ nL nH - 相対位置指定
+            guard index + 3 < data.count else { return nil }
+            let nL = data[index + 2]
+            let nH = data[index + 3]
+            let dots = Int16(bitPattern: UInt16(nL) | (UInt16(nH) << 8))
+            return (.relativePosition(dots: dots), 4)
+
+        case 0x06:  // ESC ACK n - (プリンタ固有)
             guard index + 2 < data.count else { return nil }
             return (.unknown(Data(data[index..<index + 3])), 3)
 
@@ -327,6 +351,11 @@ public struct ESCPOSDecoder: Sendable {
             let n = data[index + 2]
             return (.enableAutomaticStatus(flags: n), 3)
 
+        case 0x72:  // GS r n - 印刷ステータス送信
+            guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            return (.transmitPrintStatus(type: n), 3)
+
         case 0x76:  // GS v 0 - ラスター画像
             return decodeRasterImage(data, from: index)
 
@@ -358,6 +387,15 @@ public struct ESCPOSDecoder: Sendable {
                 return (.kanjiUnderline(mode), 3)
             }
             return (.unknown(Data(data[index..<index + 3])), 3)
+
+        case 0x2E:  // FS . - 漢字モード解除
+            return (.cancelKanjiMode, 2)
+
+        case 0x53:  // FS S n1 n2 - 漢字倍角文字設定
+            guard index + 3 < data.count else { return nil }
+            let n1 = data[index + 2]
+            let n2 = data[index + 3]
+            return (.kanjiDoubleSize(width: n1, height: n2), 4)
 
         default:
             return (.unknown(Data(data[index..<min(index + 2, data.count)])), 2)

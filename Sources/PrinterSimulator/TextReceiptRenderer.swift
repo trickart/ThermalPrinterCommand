@@ -47,7 +47,7 @@ public struct TextReceiptRenderer {
             printCentered("[PRINTER INITIALIZED]")
 
         case .text(let data):
-            let text = decodeText(data)
+            let text = decodeText(data, status: status)
             lineBuffer += text
 
         case .lineFeed:
@@ -155,21 +155,38 @@ public struct TextReceiptRenderer {
                 printCentered("[NV GRAPHICS: key=(\(kc1),\(kc2)) scale=\(scaleX)x\(scaleY)]")
             }
 
+        case .absolutePosition(let dots):
+            let charPos = dotsToChars(dots: Int(dots), status: status)
+            let currentLen = lineBuffer.count
+            if charPos > currentLen {
+                lineBuffer += String(repeating: " ", count: charPos - currentLen)
+            }
+
+        case .relativePosition(let dots):
+            let charDelta = dotsToChars(dots: Int(dots), status: status)
+            if charDelta > 0 {
+                lineBuffer += String(repeating: " ", count: charDelta)
+            }
+
         case .openCashDrawer:
             printCentered("[CASH DRAWER OPEN]")
 
         case .boldOn, .boldOff, .underline, .kanjiUnderline, .reverseMode, .justification,
-             .characterSize, .barcodeHeight, .barcodeWidth, .barcodeHRIPosition,
+             .characterSize, .characterSpacing,
+             .barcodeHeight, .barcodeWidth, .barcodeHRIPosition,
              .qrCodeSize, .qrCodeErrorCorrection, .qrCodeStore,
              .selectFont, .barcodeHRIFont,
              .qrCodeModel,
              .leftMargin, .printingWidth,
              .defaultLineSpacing, .lineSpacing,
              .rotate90, .upsideDown,
+             .selectCharacterCodeTable,
              .selectKanjiCodeSystem,
+             .kanjiDoubleSize, .cancelKanjiMode,
              .realtimeStatusRequest,
              .printerInfoRequest,
              .enableAutomaticStatus,
+             .transmitPrintStatus,
              .requestProcessIdResponse:
             break  // 状態はシミュレーターが管理
 
@@ -180,14 +197,84 @@ public struct TextReceiptRenderer {
 
     // MARK: - Private Helpers
 
-    func decodeText(_ data: Data) -> String {
+    func decodeText(_ data: Data, status: PrinterStatus) -> String {
+        // シングルバイトコードページが明示選択されている場合はコードページテーブルを使用
+        if status.characterCodeTable > 0 {
+            if data.allSatisfy({ $0 >= 0x20 }) {
+                let mapper: (UInt8) -> Character = status.characterCodeTable == 1
+                    ? { Self.codePage1toUnicode(byte: $0) }
+                    : { Self.cp437toUnicode(byte: $0) }
+                let mapped = String(data.map { mapper($0) })
+                if !mapped.isEmpty { return mapped }
+            }
+        }
+        // デフォルト: UTF-8 → Shift_JIS → CP437
         if let str = String(data: data, encoding: .utf8) {
             return str
         }
         if let str = String(data: data, encoding: .shiftJIS) {
             return str
         }
+        if data.allSatisfy({ $0 >= 0x20 }) {
+            let mapped = String(data.map { Self.cp437toUnicode(byte: $0) })
+            if !mapped.isEmpty {
+                return mapped
+            }
+        }
         return String(data: data, encoding: .ascii) ?? ""
+    }
+
+    /// コードページ437 の 0x80-0xFF をUnicode文字にマッピング
+    private static func cp437toUnicode(byte: UInt8) -> Character {
+        if byte < 0x80 {
+            return Character(UnicodeScalar(byte))
+        }
+        // CP437 upper half (0x80-0xFF) mapping table
+        let cp437Upper: [Character] = [
+            // 0x80-0x8F
+            "Ç", "ü", "é", "â", "ä", "à", "å", "ç", "ê", "ë", "è", "ï", "î", "ì", "Ä", "Å",
+            // 0x90-0x9F
+            "É", "æ", "Æ", "ô", "ö", "ò", "û", "ù", "ÿ", "Ö", "Ü", "¢", "£", "¥", "₧", "ƒ",
+            // 0xA0-0xAF
+            "á", "í", "ó", "ú", "ñ", "Ñ", "ª", "º", "¿", "⌐", "¬", "½", "¼", "¡", "«", "»",
+            // 0xB0-0xBF
+            "░", "▒", "▓", "│", "┤", "╡", "╢", "╖", "╕", "╣", "║", "╗", "╝", "╜", "╛", "┐",
+            // 0xC0-0xCF
+            "└", "┴", "┬", "├", "─", "┼", "╞", "╟", "╚", "╔", "╩", "╦", "╠", "═", "╬", "╧",
+            // 0xD0-0xDF
+            "╨", "╤", "╥", "╙", "╘", "╒", "╓", "╫", "╪", "┘", "┌", "█", "▄", "▌", "▐", "▀",
+            // 0xE0-0xEF
+            "α", "ß", "Γ", "π", "Σ", "σ", "µ", "τ", "Φ", "Θ", "Ω", "δ", "∞", "φ", "ε", "∩",
+            // 0xF0-0xFF
+            "≡", "±", "≥", "≤", "⌠", "⌡", "÷", "≈", "°", "∙", "·", "√", "ⁿ", "²", "■", " ",
+        ]
+        return cp437Upper[Int(byte) - 0x80]
+    }
+
+    /// コードページ1 (カタカナ) の 0x80-0xFF をUnicode文字にマッピング
+    private static func codePage1toUnicode(byte: UInt8) -> Character {
+        if byte < 0x80 {
+            return Character(UnicodeScalar(byte))
+        }
+        let page1Upper: [Character] = [
+            // 0x80-0x8F: ブロック要素・罫線
+            "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "┼",
+            // 0x90-0x9F: 罫線・コーナー
+            "┴", "┬", "┤", "├", "¯", "─", "│", "▕", "┌", "┐", "└", "┘", "╭", "╮", "╰", "╯",
+            // 0xA0-0xAF: 半角カタカナ記号・小文字
+            " ", "｡", "｢", "｣", "､", "･", "ｦ", "ｧ", "ｨ", "ｩ", "ｪ", "ｫ", "ｬ", "ｭ", "ｮ", "ｯ",
+            // 0xB0-0xBF: 半角カタカナ
+            "ｰ", "ｱ", "ｲ", "ｳ", "ｴ", "ｵ", "ｶ", "ｷ", "ｸ", "ｹ", "ｺ", "ｻ", "ｼ", "ｽ", "ｾ", "ｿ",
+            // 0xC0-0xCF: 半角カタカナ
+            "ﾀ", "ﾁ", "ﾂ", "ﾃ", "ﾄ", "ﾅ", "ﾆ", "ﾇ", "ﾈ", "ﾉ", "ﾊ", "ﾋ", "ﾌ", "ﾍ", "ﾎ", "ﾏ",
+            // 0xD0-0xDF: 半角カタカナ・濁点
+            "ﾐ", "ﾑ", "ﾒ", "ﾓ", "ﾔ", "ﾕ", "ﾖ", "ﾗ", "ﾘ", "ﾙ", "ﾚ", "ﾛ", "ﾜ", "ﾝ", "ﾞ", "ﾟ",
+            // 0xE0-0xEF: 罫線・図形・カードマーク
+            "═", "╞", "╪", "╡", "◢", "◣", "◥", "◤", "♠", "♥", "♦", "♣", "●", "○", "╱", "╲",
+            // 0xF0-0xFF: 漢字・記号
+            "╳", "円", "年", "月", "日", "時", "分", "秒", "〒", "市", "区", "町", "村", "人", "▓", " ",
+        ]
+        return page1Upper[Int(byte) - 0x80]
     }
 
     private mutating func flushLine(status: PrinterStatus) {
@@ -317,6 +404,11 @@ public struct TextReceiptRenderer {
         "9": [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
         ":": [0b00000, 0b00100, 0b00100, 0b00000, 0b00100, 0b00100, 0b00000],
     ]
+
+    private func dotsToChars(dots: Int, status: PrinterStatus) -> Int {
+        let dotsPerChar = max(Int(status.printingWidth) / paperWidth, 1)
+        return dots / dotsPerChar
+    }
 
     private func effectiveBarcodeModuleWidth(type: ESCPOSCommand.BarcodeType, data: Data, status: PrinterStatus) -> Int {
         let moduleWidth = Int(status.barcodeWidthMultiplier)

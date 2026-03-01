@@ -25,7 +25,9 @@ public struct PrinterStatus: Sendable {
     public var barcodeHRIPosition: ESCPOSCommand.HRIPosition = .notPrinted
     public var qrCodeModuleSize: UInt8 = 3
     public var qrCodeErrorCorrection: ESCPOSCommand.QRErrorCorrectionLevel = .l
+    public var printingWidth: UInt16 = 504
     public var qrCodeStoredData: Data?
+    public var characterCodeTable: UInt8 = 0
 
     public static let normal = PrinterStatus()
 
@@ -56,8 +58,10 @@ public struct PrinterStatus: Sendable {
         barcodeHeight = 162
         barcodeWidthMultiplier = 3
         barcodeHRIPosition = .notPrinted
+        printingWidth = 504
         qrCodeModuleSize = 3
         qrCodeErrorCorrection = .l
         qrCodeStoredData = nil
+        characterCodeTable = 0
     }
 }

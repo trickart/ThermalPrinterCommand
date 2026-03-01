@@ -404,16 +404,11 @@ struct ESCPOSDecoderTests {
 
     // MARK: - receiptio 互換性テスト
 
-    @Test("ESC t n consumes 3 bytes")
+    @Test("ESC t n decodes as selectCharacterCodeTable")
     mutating func testESCt() {
         let data = Data([0x1B, 0x74, 0x01])  // ESC t 1
         let commands = decoder.decode(data)
-        #expect(commands.count == 1)
-        if case .unknown(let d) = commands[0] {
-            #expect(d == Data([0x1B, 0x74, 0x01]))
-        } else {
-            Issue.record("Expected unknown command for ESC t")
-        }
+        #expect(commands == [.selectCharacterCodeTable(page: 1)])
     }
 
     @Test("ESC R n consumes 3 bytes")
@@ -483,5 +478,142 @@ struct ESCPOSDecoderTests {
         #expect(decoder.decode(off) == [.underline(.off)])
         #expect(decoder.decode(single) == [.underline(.single)])
         #expect(decoder.decode(double) == [.underline(.double)])
+    }
+
+    // MARK: - 第2弾: 位置制御・漢字・ステータス
+
+    @Test("ESC $ nL nH - Absolute position")
+    mutating func testAbsolutePosition() {
+        // ESC $ 0x80 0x01 = 384 dots
+        let data = Data([0x1B, 0x24, 0x80, 0x01])
+        let commands = decoder.decode(data)
+        #expect(commands == [.absolutePosition(dots: 0x0180)])
+    }
+
+    @Test("ESC \\ nL nH - Relative position")
+    mutating func testRelativePosition() {
+        // ESC \ 0x20 0x00 = 32 dots
+        let data = Data([0x1B, 0x5C, 0x20, 0x00])
+        let commands = decoder.decode(data)
+        #expect(commands == [.relativePosition(dots: 32)])
+    }
+
+    @Test("ESC \\ negative relative position")
+    mutating func testRelativePositionNegative() {
+        // ESC \ 0xE0 0xFF = -32 (signed)
+        let data = Data([0x1B, 0x5C, 0xE0, 0xFF])
+        let commands = decoder.decode(data)
+        #expect(commands == [.relativePosition(dots: -32)])
+    }
+
+    @Test("ESC SP n - Character spacing")
+    mutating func testCharacterSpacing() {
+        let data = Data([0x1B, 0x20, 0x04])  // ESC SP 4
+        let commands = decoder.decode(data)
+        #expect(commands == [.characterSpacing(dots: 4)])
+    }
+
+    @Test("FS S n1 n2 - Kanji double size")
+    mutating func testKanjiDoubleSize() {
+        let data = Data([0x1C, 0x53, 0x01, 0x02])  // FS S 1 2
+        let commands = decoder.decode(data)
+        #expect(commands == [.kanjiDoubleSize(width: 1, height: 2)])
+    }
+
+    @Test("FS . - Cancel kanji mode")
+    mutating func testCancelKanjiMode() {
+        let data = Data([0x1C, 0x2E])  // FS .
+        let commands = decoder.decode(data)
+        #expect(commands == [.cancelKanjiMode])
+    }
+
+    @Test("GS r n - Transmit print status")
+    mutating func testTransmitPrintStatus() {
+        let data = Data([0x1D, 0x72, 0x01])  // GS r 1
+        let commands = decoder.decode(data)
+        #expect(commands == [.transmitPrintStatus(type: 1)])
+    }
+
+    @Test("GS r needs response")
+    mutating func testTransmitPrintStatusNeedsResponse() {
+        let cmd = ESCPOSCommand.transmitPrintStatus(type: 1)
+        #expect(cmd.needsResponse == true)
+    }
+
+    @Test("ESC ACK n consumed as unknown (3 bytes)")
+    mutating func testESCACK() {
+        // ESC ACK n followed by text — should not leak parameter
+        let data = Data([0x1B, 0x06, 0x01, 0x41])  // ESC ACK 1 + "A"
+        let commands = decoder.decode(data)
+        #expect(commands.count == 2)
+        if case .unknown(let d) = commands[0] {
+            #expect(d == Data([0x1B, 0x06, 0x01]))
+        } else {
+            Issue.record("Expected unknown command for ESC ACK")
+        }
+        #expect(commands[1] == .text(Data([0x41])))
+    }
+
+    // MARK: - receiptio normal() 統合テスト
+
+    @Test("receiptio normal() sequence does not leak parameter bytes")
+    mutating func testReceiptioNormalSequence() {
+        // receiptio が送信する典型的なコマンドシーケンス（簡略版）
+        var data = Data()
+        // ESC @ - 初期化
+        data.append(contentsOf: [0x1B, 0x40])
+        // ESC t 0 - 文字コードテーブル
+        data.append(contentsOf: [0x1B, 0x74, 0x00])
+        // ESC R 8 - 国際文字セット
+        data.append(contentsOf: [0x1B, 0x52, 0x08])
+        // FS C 1 - 漢字コード体系
+        data.append(contentsOf: [0x1C, 0x43, 0x01])
+        // FS . - 漢字モード解除
+        data.append(contentsOf: [0x1C, 0x2E])
+        // ESC SP 0 - 文字間スペース
+        data.append(contentsOf: [0x1B, 0x20, 0x00])
+        // ESC E '0' - 太字OFF
+        data.append(contentsOf: [0x1B, 0x45, 0x30])
+        // ESC - '0' - アンダーラインOFF
+        data.append(contentsOf: [0x1B, 0x2D, 0x30])
+        // GS B '0' - 反転OFF
+        data.append(contentsOf: [0x1D, 0x42, 0x30])
+        // ESC a 1 - センタリング
+        data.append(contentsOf: [0x1B, 0x61, 0x01])
+        // GS ! 0x00 - 通常サイズ
+        data.append(contentsOf: [0x1D, 0x21, 0x00])
+        // テキスト + LF
+        data.append(contentsOf: "Store Name".utf8)
+        data.append(0x0A)
+        // ESC $ 0 0 - 絶対位置0
+        data.append(contentsOf: [0x1B, 0x24, 0x00, 0x00])
+        // テキスト + LF
+        data.append(contentsOf: "Item".utf8)
+        data.append(0x0A)
+        // GS r 1 - 印刷ステータス
+        data.append(contentsOf: [0x1D, 0x72, 0x01])
+        // GS V B 0 - カット
+        data.append(contentsOf: [0x1D, 0x56, 0x42, 0x00])
+
+        let commands = decoder.decode(data)
+
+        // テキストコマンドがパラメータバイトを含んでいないことを確認
+        for command in commands {
+            if case .text(let textData) = command {
+                let text = String(data: textData, encoding: .utf8) ?? ""
+                // テキストは可読文字のみで構成されるべき
+                for char in text.unicodeScalars {
+                    #expect(char.value >= 0x20, "Text contains control character: \\(\(char.value))")
+                }
+            }
+        }
+
+        // 特定のコマンドが正しくデコードされていることを確認
+        #expect(commands.contains(.initialize))
+        #expect(commands.contains(.cancelKanjiMode))
+        #expect(commands.contains(.characterSpacing(dots: 0)))
+        #expect(commands.contains(.absolutePosition(dots: 0)))
+        #expect(commands.contains(.transmitPrintStatus(type: 1)))
+        #expect(commands.contains(.cutWithFeed(mode: .partialWithFeed, feed: 0)))
     }
 }
