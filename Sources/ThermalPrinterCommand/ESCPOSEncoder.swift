@@ -164,6 +164,9 @@ public struct ESCPOSEncoder: Sendable {
         case .realtimeStatusRequest(let type):
             return Data([Self.DLE, 0x04, type])
 
+        case .printerInfoRequest(let type):
+            return Data([Self.GS, 0x49, type])
+
         case .enableAutomaticStatus(let flags):
             return Data([Self.GS, 0x61, flags])
 

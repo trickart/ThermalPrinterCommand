@@ -110,6 +110,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case realtimeStatusRequest(type: UInt8)
     /// 自動ステータス送信の有効/無効設定 (GS a n)
     case enableAutomaticStatus(flags: UInt8)
+    /// プリンター情報取得 (GS I n)
+    case printerInfoRequest(type: UInt8)
     /// プロセスIDレスポンスの指定 (GS ( H fn=48)
     case requestProcessIdResponse(d1: UInt8, d2: UInt8, d3: UInt8, d4: UInt8)
 
@@ -130,7 +132,7 @@ public extension ESCPOSCommand {
     /// プリンターからのレスポンスが期待されるコマンドかどうか
     var needsResponse: Bool {
         switch self {
-        case .realtimeStatusRequest, .enableAutomaticStatus, .requestProcessIdResponse:
+        case .realtimeStatusRequest, .enableAutomaticStatus, .printerInfoRequest, .requestProcessIdResponse:
             return true
         default:
             return false
