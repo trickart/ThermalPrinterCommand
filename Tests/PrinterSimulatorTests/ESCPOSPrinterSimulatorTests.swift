@@ -169,6 +169,16 @@ struct ESCPOSPrinterSimulatorTests {
         #expect(statusByte & 0x93 == 0x12)
     }
 
+    @Test("transmitPrintStatus レスポンスの receiptio 互換ビットパターン")
+    func receiptioTransmitPrintStatusBitPattern() {
+        var simulator = makeSimulator()
+        let responses = simulator.process([.transmitPrintStatus(type: 1)])
+        #expect(responses.count == 1)
+        let statusByte = responses[0][0]
+        // receiptio が期待するパターン: byte & 0x90 == 0x00
+        #expect(statusByte & 0x90 == 0x00)
+    }
+
     @Test("enableAutomaticStatus レスポンスの receiptio 互換フォーマット")
     func receiptioAutoStatusFormat() {
         var simulator = makeSimulator()

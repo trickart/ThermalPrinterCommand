@@ -113,8 +113,9 @@ public struct ESCPOSPrinterSimulator {
             return Data([0x37, 0x25, 0x30, 0x00, d1, d2, d3, d4, 0x00])
 
         case .transmitPrintStatus:
-            // オンライン・正常ステータス
-            return Data([0x12])
+            // GS r: 印刷ステータス (bit4=0, DLE EOT とはフォーマットが異なる)
+            // 正常時は 0x00 (用紙あり・エラーなし)
+            return Data([0x00])
 
         default:
             return nil
