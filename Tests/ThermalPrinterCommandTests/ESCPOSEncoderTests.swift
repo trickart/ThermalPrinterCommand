@@ -197,6 +197,11 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.enableAutomaticStatus(flags: 0xFF)) == Data([0x1D, 0x61, 0xFF]))
     }
 
+    @Test("Printer info request")
+    func testPrinterInfoRequest() {
+        #expect(encoder.encode(.printerInfoRequest(type: 0x01)) == Data([0x1D, 0x49, 0x01]))
+    }
+
     @Test("Kanji code system selection")
     func testKanjiCodeSystem() {
         // FS C n (0x1C 0x43 n)

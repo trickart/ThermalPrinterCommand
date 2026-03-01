@@ -383,6 +383,13 @@ struct ESCPOSDecoderTests {
         #expect(commands == [.enableAutomaticStatus(flags: 0xFF)])
     }
 
+    @Test("Printer info request")
+    mutating func testPrinterInfoRequest() {
+        let data = Data([0x1D, 0x49, 0x01])  // GS I 1
+        let commands = decoder.decode(data)
+        #expect(commands == [.printerInfoRequest(type: 0x01)])
+    }
+
     @Test("Unknown FS command")
     mutating func testUnknownFSCommand() {
         let unknown = Data([0x1C, 0xFF])  // Unknown FS command
