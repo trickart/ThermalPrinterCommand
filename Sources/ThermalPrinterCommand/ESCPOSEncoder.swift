@@ -47,6 +47,9 @@ public struct ESCPOSEncoder: Sendable {
         case .text(let data):
             return data
 
+        case .selectCharacterCodeTable(let page):
+            return Data([Self.ESC, 0x74, page])
+
         case .selectFont(let font):
             return Data([Self.ESC, 0x4D, font.rawValue])
 
@@ -73,6 +76,21 @@ public struct ESCPOSEncoder: Sendable {
 
         case .upsideDown(let enabled):
             return Data([Self.ESC, 0x7B, enabled ? 0x01 : 0x00])
+
+        // MARK: - 位置制御
+        case .absolutePosition(let dots):
+            let nL = UInt8(dots & 0xFF)
+            let nH = UInt8((dots >> 8) & 0xFF)
+            return Data([Self.ESC, 0x24, nL, nH])
+
+        case .relativePosition(let dots):
+            let raw = UInt16(bitPattern: dots)
+            let nL = UInt8(raw & 0xFF)
+            let nH = UInt8((raw >> 8) & 0xFF)
+            return Data([Self.ESC, 0x5C, nL, nH])
+
+        case .characterSpacing(let dots):
+            return Data([Self.ESC, 0x20, dots])
 
         // MARK: - 配置
         case .justification(let justification):
@@ -181,6 +199,16 @@ public struct ESCPOSEncoder: Sendable {
 
         case .selectKanjiCodeSystem(let codeSystem):
             return Data([Self.FS, 0x43, codeSystem.rawValue])
+
+        case .kanjiDoubleSize(let width, let height):
+            return Data([Self.FS, 0x53, width, height])
+
+        case .cancelKanjiMode:
+            return Data([Self.FS, 0x2E])
+
+        // MARK: - ステータス (追加)
+        case .transmitPrintStatus(let type):
+            return Data([Self.GS, 0x72, type])
 
         // MARK: - その他
         case .unknown(let data):

@@ -21,6 +21,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     // MARK: - テキストフォーマット
     /// テキストデータ
     case text(Data)
+    /// 文字コードテーブル選択 (ESC t n)
+    case selectCharacterCodeTable(page: UInt8)
     /// 文字フォント選択 (ESC M n)
     case selectFont(Font)
     /// 太字設定 (ESC E n)
@@ -36,6 +38,14 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case rotate90(enabled: Bool)
     /// 上下逆印刷 (ESC { n)
     case upsideDown(enabled: Bool)
+
+    // MARK: - 位置制御
+    /// 絶対位置指定 (ESC $ nL nH)
+    case absolutePosition(dots: UInt16)
+    /// 相対位置指定 (ESC \ nL nH)
+    case relativePosition(dots: Int16)
+    /// 文字間スペース設定 (ESC SP n)
+    case characterSpacing(dots: UInt8)
 
     // MARK: - 配置
     /// 配置設定 (ESC a n)
@@ -112,6 +122,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case printerInfoRequest(type: UInt8)
     /// 自動ステータス送信の有効/無効設定 (GS a n)
     case enableAutomaticStatus(flags: UInt8)
+    /// 印刷ステータス送信 (GS r n)
+    case transmitPrintStatus(type: UInt8)
     /// プロセスIDレスポンスの指定 (GS ( H fn=48)
     case requestProcessIdResponse(d1: UInt8, d2: UInt8, d3: UInt8, d4: UInt8)
 
@@ -120,6 +132,10 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case kanjiUnderline(UnderlineMode)
     /// 漢字コード体系の選択 (FS C n)
     case selectKanjiCodeSystem(KanjiCodeSystem)
+    /// 漢字倍角文字設定 (FS S n1 n2)
+    case kanjiDoubleSize(width: UInt8, height: UInt8)
+    /// 漢字モード解除 (FS .)
+    case cancelKanjiMode
 
     // MARK: - その他
     /// 不明なコマンド
@@ -134,7 +150,7 @@ public extension ESCPOSCommand {
     /// プリンターからのレスポンスが期待されるコマンドかどうか
     var needsResponse: Bool {
         switch self {
-        case .realtimeStatusRequest, .printerInfoRequest, .enableAutomaticStatus, .requestProcessIdResponse:
+        case .realtimeStatusRequest, .printerInfoRequest, .enableAutomaticStatus, .requestProcessIdResponse, .transmitPrintStatus:
             return true
         default:
             return false
