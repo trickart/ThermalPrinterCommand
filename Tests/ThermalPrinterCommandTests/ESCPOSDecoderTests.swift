@@ -376,6 +376,13 @@ struct ESCPOSDecoderTests {
         #expect(commands == [.requestProcessIdResponse(d1: 0x20, d2: 0x7E, d3: 0x41, d4: 0x5A)])
     }
 
+    @Test("Enable automatic status")
+    mutating func testEnableAutomaticStatus() {
+        let data = Data([0x1D, 0x61, 0xFF])  // GS a 0xFF
+        let commands = decoder.decode(data)
+        #expect(commands == [.enableAutomaticStatus(flags: 0xFF)])
+    }
+
     @Test("Unknown FS command")
     mutating func testUnknownFSCommand() {
         let unknown = Data([0x1C, 0xFF])  // Unknown FS command
