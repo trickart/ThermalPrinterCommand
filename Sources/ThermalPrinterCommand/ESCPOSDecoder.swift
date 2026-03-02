@@ -397,6 +397,9 @@ public struct ESCPOSDecoder: Sendable {
             }
             return (.unknown(Data(data[index..<index + 3])), 3)
 
+        case 0x26:  // FS & - 漢字モードの指定
+            return (.selectKanjiMode, 2)
+
         case 0x2E:  // FS . - 漢字モード解除
             return (.cancelKanjiMode, 2)
 

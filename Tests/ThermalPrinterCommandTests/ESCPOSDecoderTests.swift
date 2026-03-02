@@ -554,11 +554,33 @@ struct ESCPOSDecoderTests {
         #expect(commands == [.kanjiDoubleSize(width: 1, height: 2)])
     }
 
+    @Test("FS & - Select kanji mode")
+    mutating func testSelectKanjiMode() {
+        let data = Data([0x1C, 0x26])  // FS &
+        let commands = decoder.decode(data)
+        #expect(commands == [.selectKanjiMode])
+    }
+
     @Test("FS . - Cancel kanji mode")
     mutating func testCancelKanjiMode() {
         let data = Data([0x1C, 0x2E])  // FS .
         let commands = decoder.decode(data)
         #expect(commands == [.cancelKanjiMode])
+    }
+
+    @Test("FS & and FS . roundtrip")
+    mutating func testKanjiModeRoundtrip() {
+        let encoder = ESCPOSEncoder()
+        // selectKanjiMode
+        let encoded1 = encoder.encode(.selectKanjiMode)
+        var decoder1 = ESCPOSDecoder()
+        let decoded1 = decoder1.decode(encoded1)
+        #expect(decoded1 == [.selectKanjiMode])
+        // cancelKanjiMode
+        let encoded2 = encoder.encode(.cancelKanjiMode)
+        var decoder2 = ESCPOSDecoder()
+        let decoded2 = decoder2.decode(encoded2)
+        #expect(decoded2 == [.cancelKanjiMode])
     }
 
     @Test("GS r n - Transmit print status")

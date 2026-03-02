@@ -15,6 +15,7 @@ public struct PrinterStatus: Sendable {
 
     public var bold = false
     public var underlineMode: ESCPOSCommand.UnderlineMode = .off
+    public var kanjiMode = false
     public var kanjiUnderlineMode: ESCPOSCommand.UnderlineMode = .off
     public var reverse = false
     public var justification: ESCPOSCommand.Justification = .left
@@ -51,6 +52,7 @@ public struct PrinterStatus: Sendable {
     public mutating func resetRenderingState() {
         bold = false
         underlineMode = .off
+        kanjiMode = false
         kanjiUnderlineMode = .off
         reverse = false
         justification = .left
