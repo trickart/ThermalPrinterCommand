@@ -222,6 +222,14 @@ public struct ESCPOSDecoder: Sendable {
             let n = data[index + 2]
             return (.upsideDown(enabled: n != 0), 3)
 
+        case 0x72:  // ESC r n - 印字色の選択
+            guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            if let color = ESCPOSCommand.PrintColor(rawValue: n) {
+                return (.selectPrintColor(color), 3)
+            }
+            return (.unknown(Data(data[index..<index + 3])), 3)
+
         case 0x70:  // ESC p m t1 t2 - キャッシュドロワー
             guard index + 4 < data.count else { return nil }
             let m = data[index + 2]

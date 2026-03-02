@@ -131,6 +131,10 @@ public enum ESCPOSCommand: Equatable, Sendable {
     /// プロセスIDレスポンスの指定 (GS ( H fn=48)
     case requestProcessIdResponse(d1: UInt8, d2: UInt8, d3: UInt8, d4: UInt8)
 
+    // MARK: - 印字色
+    /// 印字色の選択 (ESC r n)
+    case selectPrintColor(PrintColor)
+
     // MARK: - 漢字関連 (FS)
     /// 漢字アンダーラインの指定・解除 (FS - n)
     case kanjiUnderline(UnderlineMode)
@@ -310,6 +314,26 @@ public extension ESCPOSCommand {
         case indiaGujarati = 74
         case indiaPunjabi = 75
         case indiaMarathi = 82
+    }
+
+    /// 印字色 (ESC r)
+    enum PrintColor: UInt8, Sendable {
+        /// 黒
+        case black = 0
+        /// 赤
+        case red = 1
+
+        /// 0, 1, 48('0'), 49('1') から初期化可能
+        public init?(rawValue: UInt8) {
+            switch rawValue {
+            case 0, 48:  // 0 or '0'
+                self = .black
+            case 1, 49:  // 1 or '1'
+                self = .red
+            default:
+                return nil
+            }
+        }
     }
 
     /// 漢字コード体系 (FS C)

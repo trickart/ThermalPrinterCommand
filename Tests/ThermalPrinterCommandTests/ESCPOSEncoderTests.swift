@@ -52,6 +52,14 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.selectPrintMode(allModes)) == Data([0x1B, 0x21, 0xB9]))
     }
 
+    @Test("Print color selection (ESC r)")
+    func testPrintColorSelection() {
+        // ESC r 0 = 黒
+        #expect(encoder.encode(.selectPrintColor(.black)) == Data([0x1B, 0x72, 0x00]))
+        // ESC r 1 = 赤
+        #expect(encoder.encode(.selectPrintColor(.red)) == Data([0x1B, 0x72, 0x01]))
+    }
+
     @Test("International character set selection (ESC R)")
     func testInternationalCharacterSet() {
         #expect(encoder.encode(.selectInternationalCharacterSet(.usa)) == Data([0x1B, 0x52, 0x00]))
@@ -499,6 +507,19 @@ struct ESCPOSRoundtripTests {
             .selectInternationalCharacterSet(.arabia),
             .selectInternationalCharacterSet(.indiaDevanagari),
             .selectInternationalCharacterSet(.indiaMarathi),
+        ]
+        for command in commands {
+            let encoded = encoder.encode(command)
+            let decoded = decoder.decode(encoded)
+            #expect(decoded == [command])
+        }
+    }
+
+    @Test("Print color roundtrip")
+    mutating func testPrintColorRoundtrip() {
+        let commands: [ESCPOSCommand] = [
+            .selectPrintColor(.black),
+            .selectPrintColor(.red)
         ]
         for command in commands {
             let encoded = encoder.encode(command)

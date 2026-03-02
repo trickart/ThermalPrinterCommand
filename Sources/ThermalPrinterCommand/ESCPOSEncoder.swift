@@ -83,6 +83,9 @@ public struct ESCPOSEncoder: Sendable {
         case .upsideDown(let enabled):
             return Data([Self.ESC, 0x7B, enabled ? 0x01 : 0x00])
 
+        case .selectPrintColor(let color):
+            return Data([Self.ESC, 0x72, color.rawValue])
+
         // MARK: - 位置制御
         case .absolutePosition(let dots):
             let nL = UInt8(dots & 0xFF)

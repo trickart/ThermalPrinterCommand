@@ -30,6 +30,7 @@ public struct TextReceiptRenderer {
     static let ansiUnderlineOff = "\u{1B}[24m"
     static let ansiReverseOn = "\u{1B}[7m"
     static let ansiReverseOff = "\u{1B}[27m"
+    static let ansiRedOn = "\u{1B}[31m"
 
     // MARK: - Initializer
 
@@ -181,6 +182,7 @@ public struct TextReceiptRenderer {
              .leftMargin, .printingWidth,
              .defaultLineSpacing, .lineSpacing,
              .rotate90, .upsideDown,
+             .selectPrintColor,
              .selectInternationalCharacterSet,
              .selectCharacterCodeTable,
              .selectKanjiCodeSystem,
@@ -294,11 +296,12 @@ public struct TextReceiptRenderer {
                 styled = Self.ansiUnderlineOn + styled
             }
             if status.reverse { styled = Self.ansiReverseOn + styled }
+            if status.printColor == .red { styled = Self.ansiRedOn + styled }
         }
 
         let aligned = applyJustification(content, styled: styled, justification: status.justification)
 
-        let needsReset = ansiStyleEnabled && (status.bold || status.underlineMode != .off || status.kanjiUnderlineMode != .off || status.reverse)
+        let needsReset = ansiStyleEnabled && (status.bold || status.underlineMode != .off || status.kanjiUnderlineMode != .off || status.reverse || status.printColor == .red)
         if needsReset {
             outputLine(aligned + Self.ansiReset)
         } else {
