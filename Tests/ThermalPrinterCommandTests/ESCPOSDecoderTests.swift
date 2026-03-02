@@ -424,6 +424,35 @@ struct ESCPOSDecoderTests {
         #expect(commands == [.selectCharacterCodeTable(page: 1)])
     }
 
+    @Test("ESC r n - Print color selection")
+    mutating func testESCr() {
+        // ESC r 0 = 黒
+        let black = Data([0x1B, 0x72, 0x00])
+        #expect(decoder.decode(black) == [.selectPrintColor(.black)])
+
+        // ESC r 1 = 赤
+        let red = Data([0x1B, 0x72, 0x01])
+        #expect(decoder.decode(red) == [.selectPrintColor(.red)])
+
+        // ESC r 48 ('0') = 黒
+        let blackChar = Data([0x1B, 0x72, 0x30])
+        #expect(decoder.decode(blackChar) == [.selectPrintColor(.black)])
+
+        // ESC r 49 ('1') = 赤
+        let redChar = Data([0x1B, 0x72, 0x31])
+        #expect(decoder.decode(redChar) == [.selectPrintColor(.red)])
+
+        // 未定義値 → unknown
+        let invalid = Data([0x1B, 0x72, 0xFF])
+        let cmds = decoder.decode(invalid)
+        #expect(cmds.count == 1)
+        if case .unknown(let d) = cmds[0] {
+            #expect(d == Data([0x1B, 0x72, 0xFF]))
+        } else {
+            Issue.record("Expected unknown for invalid ESC r value")
+        }
+    }
+
     @Test("ESC R n - International character set selection")
     mutating func testESCR() {
         // ESC R 8 = Japan

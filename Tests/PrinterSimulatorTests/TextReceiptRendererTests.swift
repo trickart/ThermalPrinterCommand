@@ -98,6 +98,29 @@ struct TextReceiptRendererTests {
         #expect(lines[0].hasSuffix(TextReceiptRenderer.ansiReset))
     }
 
+    // MARK: - 印字色
+
+    @Test("selectPrintColor(.red) で ANSI 赤色コード付きで出力される")
+    func redColorText() {
+        var (simulator, getLines) = makeSimulator()
+        _ = simulator.process([.selectPrintColor(.red), .text(Data("Red".utf8)), .lineFeed])
+        let lines = getLines()
+        #expect(lines.count == 1)
+        #expect(lines[0].contains(TextReceiptRenderer.ansiRedOn))
+        #expect(lines[0].contains("Red"))
+        #expect(lines[0].hasSuffix(TextReceiptRenderer.ansiReset))
+    }
+
+    @Test("selectPrintColor(.black) では赤色ANSIコードが付かない")
+    func blackColorText() {
+        var (simulator, getLines) = makeSimulator()
+        _ = simulator.process([.selectPrintColor(.black), .text(Data("Black".utf8)), .lineFeed])
+        let lines = getLines()
+        #expect(lines.count == 1)
+        #expect(!lines[0].contains(TextReceiptRenderer.ansiRedOn))
+        #expect(lines[0] == "Black")
+    }
+
     // MARK: - 中央揃え
 
     @Test("justification(.center) でパディング付きで出力される")
@@ -291,6 +314,16 @@ struct TextReceiptRendererTests {
         let lines = getLines()
         #expect(lines.count == 1)
         #expect(lines[0] == "Reversed")
+        #expect(!lines[0].contains("\u{1B}"))
+    }
+
+    @Test("ansiStyleEnabled=false: selectPrintColor(.red)でもANSIコードが付かない")
+    func redColorWithoutAnsi() {
+        var (simulator, getLines) = makeSimulator(ansiStyleEnabled: false)
+        _ = simulator.process([.selectPrintColor(.red), .text(Data("Red".utf8)), .lineFeed])
+        let lines = getLines()
+        #expect(lines.count == 1)
+        #expect(lines[0] == "Red")
         #expect(!lines[0].contains("\u{1B}"))
     }
 

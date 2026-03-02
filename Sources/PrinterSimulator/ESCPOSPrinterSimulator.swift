@@ -92,6 +92,8 @@ public struct ESCPOSPrinterSimulator {
             status.qrCodeStoredData = data
         case .printingWidth(let dots):
             status.printingWidth = dots
+        case .selectPrintColor(let color):
+            status.printColor = color
         case .selectInternationalCharacterSet(let characterSet):
             status.internationalCharacterSet = characterSet
         case .selectCharacterCodeTable(let page):
