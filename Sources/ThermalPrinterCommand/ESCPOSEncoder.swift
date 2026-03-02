@@ -50,6 +50,9 @@ public struct ESCPOSEncoder: Sendable {
         case .text(let data):
             return data
 
+        case .selectInternationalCharacterSet(let characterSet):
+            return Data([Self.ESC, 0x52, characterSet.rawValue])
+
         case .selectCharacterCodeTable(let page):
             return Data([Self.ESC, 0x74, page])
 

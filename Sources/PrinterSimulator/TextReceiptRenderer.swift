@@ -181,6 +181,7 @@ public struct TextReceiptRenderer {
              .leftMargin, .printingWidth,
              .defaultLineSpacing, .lineSpacing,
              .rotate90, .upsideDown,
+             .selectInternationalCharacterSet,
              .selectCharacterCodeTable,
              .selectKanjiCodeSystem,
              .kanjiDoubleSize, .cancelKanjiMode,

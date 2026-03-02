@@ -52,6 +52,16 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.selectPrintMode(allModes)) == Data([0x1B, 0x21, 0xB9]))
     }
 
+    @Test("International character set selection (ESC R)")
+    func testInternationalCharacterSet() {
+        #expect(encoder.encode(.selectInternationalCharacterSet(.usa)) == Data([0x1B, 0x52, 0x00]))
+        #expect(encoder.encode(.selectInternationalCharacterSet(.japan)) == Data([0x1B, 0x52, 0x08]))
+        #expect(encoder.encode(.selectInternationalCharacterSet(.korea)) == Data([0x1B, 0x52, 0x0D]))
+        #expect(encoder.encode(.selectInternationalCharacterSet(.china)) == Data([0x1B, 0x52, 0x0F]))
+        #expect(encoder.encode(.selectInternationalCharacterSet(.indiaDevanagari)) == Data([0x1B, 0x52, 0x42]))
+        #expect(encoder.encode(.selectInternationalCharacterSet(.indiaMarathi)) == Data([0x1B, 0x52, 0x52]))
+    }
+
     @Test("Font selection")
     func testFontSelection() {
         #expect(encoder.encode(.selectFont(.fontA)) == Data([0x1B, 0x4D, 0x00]))
@@ -465,6 +475,24 @@ struct ESCPOSRoundtripTests {
         let storeEncoded = encoder.encode(storeCommand)
         let storeDecoded = decoder.decode(storeEncoded)
         #expect(storeDecoded == [storeCommand])
+    }
+
+    @Test("International character set roundtrip")
+    mutating func testInternationalCharacterSetRoundtrip() {
+        let commands: [ESCPOSCommand] = [
+            .selectInternationalCharacterSet(.usa),
+            .selectInternationalCharacterSet(.france),
+            .selectInternationalCharacterSet(.japan),
+            .selectInternationalCharacterSet(.korea),
+            .selectInternationalCharacterSet(.arabia),
+            .selectInternationalCharacterSet(.indiaDevanagari),
+            .selectInternationalCharacterSet(.indiaMarathi),
+        ]
+        for command in commands {
+            let encoded = encoder.encode(command)
+            let decoded = decoder.decode(encoded)
+            #expect(decoded == [command])
+        }
     }
 
     @Test("Kanji underline roundtrip")

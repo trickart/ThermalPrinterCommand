@@ -88,6 +88,8 @@ public struct ESCPOSPrinterSimulator {
             status.qrCodeStoredData = data
         case .printingWidth(let dots):
             status.printingWidth = dots
+        case .selectInternationalCharacterSet(let characterSet):
+            status.internationalCharacterSet = characterSet
         case .selectCharacterCodeTable(let page):
             status.characterCodeTable = page
         default:

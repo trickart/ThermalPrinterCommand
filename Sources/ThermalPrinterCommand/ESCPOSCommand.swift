@@ -23,6 +23,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case selectPrintMode(PrintMode)
     /// テキストデータ
     case text(Data)
+    /// 国際文字セットの選択 (ESC R n)
+    case selectInternationalCharacterSet(InternationalCharacterSet)
     /// 文字コードテーブル選択 (ESC t n)
     case selectCharacterCodeTable(page: UInt8)
     /// 文字フォント選択 (ESC M n)
@@ -273,6 +275,39 @@ public extension ESCPOSCommand {
         case color3 = 51  // '3'
         /// 第4色
         case color4 = 52  // '4'
+    }
+
+    /// 国際文字セット (ESC R)
+    enum InternationalCharacterSet: UInt8, Sendable {
+        case usa = 0
+        case france = 1
+        case germany = 2
+        case uk = 3
+        case denmark1 = 4
+        case sweden = 5
+        case italy = 6
+        case spain1 = 7
+        case japan = 8
+        case norway = 9
+        case denmark2 = 10
+        case spain2 = 11
+        case latinAmerica = 12
+        case korea = 13
+        case slovenia = 14
+        case china = 15
+        case vietnam = 16
+        case arabia = 17
+        case indiaDevanagari = 66
+        case indiaBengali = 67
+        case indiaTamil = 68
+        case indiaTelugu = 69
+        case indiaAssamese = 70
+        case indiaOriya = 71
+        case indiaKannada = 72
+        case indiaMalayalam = 73
+        case indiaGujarati = 74
+        case indiaPunjabi = 75
+        case indiaMarathi = 82
     }
 
     /// 漢字コード体系 (FS C)
