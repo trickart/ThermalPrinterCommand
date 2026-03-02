@@ -27,6 +27,7 @@ public struct PrinterStatus: Sendable {
     public var qrCodeErrorCorrection: ESCPOSCommand.QRErrorCorrectionLevel = .l
     public var printingWidth: UInt16 = 504
     public var qrCodeStoredData: Data?
+    public var internationalCharacterSet: ESCPOSCommand.InternationalCharacterSet = .japan
     public var characterCodeTable: UInt8 = 0
 
     public static let normal = PrinterStatus()
@@ -62,6 +63,7 @@ public struct PrinterStatus: Sendable {
         qrCodeModuleSize = 3
         qrCodeErrorCorrection = .l
         qrCodeStoredData = nil
+        internationalCharacterSet = .japan
         characterCodeTable = 0
     }
 }

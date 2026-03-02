@@ -424,15 +424,36 @@ struct ESCPOSDecoderTests {
         #expect(commands == [.selectCharacterCodeTable(page: 1)])
     }
 
-    @Test("ESC R n consumes 3 bytes")
+    @Test("ESC R n - International character set selection")
     mutating func testESCR() {
-        let data = Data([0x1B, 0x52, 0x08])  // ESC R 8
-        let commands = decoder.decode(data)
-        #expect(commands.count == 1)
-        if case .unknown(let d) = commands[0] {
-            #expect(d == Data([0x1B, 0x52, 0x08]))
+        // ESC R 8 = Japan
+        let japan = Data([0x1B, 0x52, 0x08])
+        #expect(decoder.decode(japan) == [.selectInternationalCharacterSet(.japan)])
+
+        // ESC R 0 = USA
+        let usa = Data([0x1B, 0x52, 0x00])
+        #expect(decoder.decode(usa) == [.selectInternationalCharacterSet(.usa)])
+
+        // ESC R 13 = Korea
+        let korea = Data([0x1B, 0x52, 0x0D])
+        #expect(decoder.decode(korea) == [.selectInternationalCharacterSet(.korea)])
+
+        // ESC R 66 = India (Devanagari)
+        let india = Data([0x1B, 0x52, 0x42])
+        #expect(decoder.decode(india) == [.selectInternationalCharacterSet(.indiaDevanagari)])
+
+        // ESC R 82 = India (Marathi)
+        let marathi = Data([0x1B, 0x52, 0x52])
+        #expect(decoder.decode(marathi) == [.selectInternationalCharacterSet(.indiaMarathi)])
+
+        // 未定義値 → unknown
+        let invalid = Data([0x1B, 0x52, 0xFF])
+        let cmds = decoder.decode(invalid)
+        #expect(cmds.count == 1)
+        if case .unknown(let d) = cmds[0] {
+            #expect(d == Data([0x1B, 0x52, 0xFF]))
         } else {
-            Issue.record("Expected unknown command for ESC R")
+            Issue.record("Expected unknown for invalid ESC R value")
         }
     }
 
@@ -623,6 +644,7 @@ struct ESCPOSDecoderTests {
 
         // 特定のコマンドが正しくデコードされていることを確認
         #expect(commands.contains(.initialize))
+        #expect(commands.contains(.selectInternationalCharacterSet(.japan)))
         #expect(commands.contains(.cancelKanjiMode))
         #expect(commands.contains(.characterSpacing(dots: 0)))
         #expect(commands.contains(.absolutePosition(dots: 0)))

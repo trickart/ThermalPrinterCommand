@@ -236,6 +236,10 @@ public struct ESCPOSDecoder: Sendable {
 
         case 0x52:  // ESC R n - 国際文字セット選択
             guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            if let characterSet = ESCPOSCommand.InternationalCharacterSet(rawValue: n) {
+                return (.selectInternationalCharacterSet(characterSet), 3)
+            }
             return (.unknown(Data(data[index..<index + 3])), 3)
 
         case 0x5C:  // ESC \ nL nH - 相対位置指定
