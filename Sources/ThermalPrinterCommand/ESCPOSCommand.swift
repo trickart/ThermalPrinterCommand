@@ -19,6 +19,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case feedLines(count: UInt8)
 
     // MARK: - テキストフォーマット
+    /// 印字モードの一括指定 (ESC ! n)
+    case selectPrintMode(PrintMode)
     /// テキストデータ
     case text(Data)
     /// 文字コードテーブル選択 (ESC t n)
@@ -161,6 +163,26 @@ public extension ESCPOSCommand {
 // MARK: - Supporting Types
 
 public extension ESCPOSCommand {
+    /// 印字モード (ESC ! n) のビットフィールド
+    struct PrintMode: OptionSet, Sendable, Hashable {
+        public let rawValue: UInt8
+
+        public init(rawValue: UInt8) {
+            self.rawValue = rawValue
+        }
+
+        /// Font B選択 (Bit 0)
+        public static let fontB       = PrintMode(rawValue: 1 << 0)
+        /// 強調（太字）モード (Bit 3)
+        public static let emphasized  = PrintMode(rawValue: 1 << 3)
+        /// 倍高文字 (Bit 4)
+        public static let doubleHeight = PrintMode(rawValue: 1 << 4)
+        /// 倍幅文字 (Bit 5)
+        public static let doubleWidth  = PrintMode(rawValue: 1 << 5)
+        /// アンダーライン (Bit 7)
+        public static let underline   = PrintMode(rawValue: 1 << 7)
+    }
+
     enum Font: UInt8, Sendable {
         case fontA = 0
         case fontB = 1

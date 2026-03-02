@@ -44,6 +44,9 @@ public struct ESCPOSEncoder: Sendable {
             return Data([Self.ESC, 0x64, count])
 
         // MARK: - テキストフォーマット
+        case .selectPrintMode(let mode):
+            return Data([Self.ESC, 0x21, mode.rawValue])
+
         case .text(let data):
             return data
 

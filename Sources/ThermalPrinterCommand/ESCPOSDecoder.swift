@@ -145,6 +145,11 @@ public struct ESCPOSDecoder: Sendable {
             let n = data[index + 2]
             return (.characterSpacing(dots: n), 3)
 
+        case 0x21:  // ESC ! n - 印字モードの一括指定
+            guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            return (.selectPrintMode(ESCPOSCommand.PrintMode(rawValue: n)), 3)
+
         case 0x24:  // ESC $ nL nH - 絶対位置指定
             guard index + 3 < data.count else { return nil }
             let nL = data[index + 2]

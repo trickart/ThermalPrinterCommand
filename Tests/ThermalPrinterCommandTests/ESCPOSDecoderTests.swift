@@ -34,6 +34,19 @@ struct ESCPOSDecoderTests {
         #expect(commands == [.horizontalTab])
     }
 
+    @Test("Select print mode (ESC !)")
+    mutating func testSelectPrintMode() {
+        // 標準モード
+        let standard = Data([0x1B, 0x21, 0x00])
+        #expect(decoder.decode(standard) == [.selectPrintMode([])])
+        // Font B + 強調
+        let fontBBold = Data([0x1B, 0x21, 0x09])
+        #expect(decoder.decode(fontBBold) == [.selectPrintMode([.fontB, .emphasized])])
+        // 全モード: 0xB9 = Font B(1) + 強調(8) + 倍高(0x10) + 倍幅(0x20) + アンダーライン(0x80)
+        let all = Data([0x1B, 0x21, 0xB9])
+        #expect(decoder.decode(all) == [.selectPrintMode([.fontB, .emphasized, .doubleHeight, .doubleWidth, .underline])])
+    }
+
     @Test("Bold on/off")
     mutating func testBold() {
         let dataOn = Data([0x1B, 0x45, 0x01])   // ESC E 1

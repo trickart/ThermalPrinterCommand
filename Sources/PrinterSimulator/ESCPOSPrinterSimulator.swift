@@ -52,6 +52,13 @@ public struct ESCPOSPrinterSimulator {
         switch command {
         case .initialize:
             status.resetRenderingState()
+        case .selectPrintMode(let mode):
+            status.bold = mode.contains(.emphasized)
+            status.underlineMode = mode.contains(.underline) ? .single : .off
+            let w: UInt8 = mode.contains(.doubleWidth) ? 2 : 1
+            let h: UInt8 = mode.contains(.doubleHeight) ? 2 : 1
+            status.widthMultiplier = w
+            status.heightMultiplier = h
         case .boldOn:
             status.bold = true
         case .boldOff:

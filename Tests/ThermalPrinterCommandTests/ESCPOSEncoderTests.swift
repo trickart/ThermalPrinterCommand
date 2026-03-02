@@ -33,6 +33,25 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.text(textData)) == textData)
     }
 
+    @Test("Select print mode (ESC !)")
+    func testSelectPrintMode() {
+        // 全ビットオフ（標準モード）
+        #expect(encoder.encode(.selectPrintMode([])) == Data([0x1B, 0x21, 0x00]))
+        // Font B のみ (Bit 0)
+        #expect(encoder.encode(.selectPrintMode(.fontB)) == Data([0x1B, 0x21, 0x01]))
+        // 強調のみ (Bit 3)
+        #expect(encoder.encode(.selectPrintMode(.emphasized)) == Data([0x1B, 0x21, 0x08]))
+        // 倍高のみ (Bit 4)
+        #expect(encoder.encode(.selectPrintMode(.doubleHeight)) == Data([0x1B, 0x21, 0x10]))
+        // 倍幅のみ (Bit 5)
+        #expect(encoder.encode(.selectPrintMode(.doubleWidth)) == Data([0x1B, 0x21, 0x20]))
+        // アンダーラインのみ (Bit 7)
+        #expect(encoder.encode(.selectPrintMode(.underline)) == Data([0x1B, 0x21, 0x80]))
+        // 複合: Font B + 強調 + 倍幅 + 倍高 + アンダーライン
+        let allModes: ESCPOSCommand.PrintMode = [.fontB, .emphasized, .doubleHeight, .doubleWidth, .underline]
+        #expect(encoder.encode(.selectPrintMode(allModes)) == Data([0x1B, 0x21, 0xB9]))
+    }
+
     @Test("Font selection")
     func testFontSelection() {
         #expect(encoder.encode(.selectFont(.fontA)) == Data([0x1B, 0x4D, 0x00]))
