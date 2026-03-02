@@ -209,6 +209,9 @@ public struct ESCPOSEncoder: Sendable {
         case .kanjiDoubleSize(let width, let height):
             return Data([Self.FS, 0x53, width, height])
 
+        case .selectKanjiMode:
+            return Data([Self.FS, 0x26])
+
         case .cancelKanjiMode:
             return Data([Self.FS, 0x2E])
 

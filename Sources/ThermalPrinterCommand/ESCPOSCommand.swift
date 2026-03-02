@@ -138,6 +138,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case selectKanjiCodeSystem(KanjiCodeSystem)
     /// 漢字倍角文字設定 (FS S n1 n2)
     case kanjiDoubleSize(width: UInt8, height: UInt8)
+    /// 漢字モードの指定 (FS &)
+    case selectKanjiMode
     /// 漢字モード解除 (FS .)
     case cancelKanjiMode
 

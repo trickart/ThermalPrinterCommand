@@ -231,6 +231,18 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.printerInfoRequest(type: 0x01)) == Data([0x1D, 0x49, 0x01]))
     }
 
+    @Test("Select kanji mode")
+    func testSelectKanjiMode() {
+        // FS & (0x1C 0x26)
+        #expect(encoder.encode(.selectKanjiMode) == Data([0x1C, 0x26]))
+    }
+
+    @Test("Cancel kanji mode")
+    func testCancelKanjiMode() {
+        // FS . (0x1C 0x2E)
+        #expect(encoder.encode(.cancelKanjiMode) == Data([0x1C, 0x2E]))
+    }
+
     @Test("Kanji underline")
     func testKanjiUnderline() {
         // FS - n (0x1C 0x2D n)

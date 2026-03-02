@@ -184,7 +184,7 @@ public struct TextReceiptRenderer {
              .selectInternationalCharacterSet,
              .selectCharacterCodeTable,
              .selectKanjiCodeSystem,
-             .kanjiDoubleSize, .cancelKanjiMode,
+             .selectKanjiMode, .kanjiDoubleSize, .cancelKanjiMode,
              .realtimeStatusRequest,
              .printerInfoRequest,
              .enableAutomaticStatus,
