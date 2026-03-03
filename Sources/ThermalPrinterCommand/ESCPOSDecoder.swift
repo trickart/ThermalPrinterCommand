@@ -419,6 +419,11 @@ public struct ESCPOSDecoder: Sendable {
         let cmd = data[index + 1]
 
         switch cmd {
+        case 0x21:  // FS ! n - 漢字の印字モードの一括指定
+            guard index + 2 < data.count else { return nil }
+            let n = data[index + 2]
+            return (.selectKanjiPrintMode(ESCPOSCommand.KanjiPrintMode(rawValue: n)), 3)
+
         case 0x43:  // FS C n - 漢字コード体系の選択
             guard index + 2 < data.count else { return nil }
             let n = data[index + 2]
