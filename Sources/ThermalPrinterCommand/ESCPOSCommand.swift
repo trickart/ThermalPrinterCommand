@@ -119,6 +119,22 @@ public enum ESCPOSCommand: Equatable, Sendable {
     /// 指定されたNVグラフィックスの印字 (GS ( L fn=69)
     case nvGraphicsPrint(keyCode1: UInt8, keyCode2: UInt8, scaleX: UInt8, scaleY: UInt8)
 
+    // MARK: - グラフィックス (GS 8 L) - 大容量版
+    /// グラフィックスデータ(ラスター形式)のプリントバッファーへの格納 (GS 8 L fn=112)
+    case graphicsStoreLarge(
+        tone: GraphicsTone,
+        scaleX: UInt8,
+        scaleY: UInt8,
+        color: GraphicsColor,
+        width: UInt16,
+        height: UInt16,
+        data: Data
+    )
+    /// プリントバッファーに格納されているグラフィックスデータの印字 (GS 8 L fn=50)
+    case graphicsPrintLarge
+    /// 指定されたNVグラフィックスの印字 (GS 8 L fn=69)
+    case nvGraphicsPrintLarge(keyCode1: UInt8, keyCode2: UInt8, scaleX: UInt8, scaleY: UInt8)
+
     // MARK: - ステータス
     /// リアルタイムステータス送信要求 (DLE EOT n)
     case realtimeStatusRequest(type: UInt8)

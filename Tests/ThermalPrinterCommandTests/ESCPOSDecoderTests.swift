@@ -783,3 +783,89 @@ struct ESCPOSDecoderTests {
         #expect(decoder.pendingBuffer == incomplete)
     }
 }
+
+// MARK: - GS 8 L (大容量グラフィックス) Decoder Tests
+
+@Suite("GS 8 L decoder tests")
+struct ESCPOSDecoderGS8LTests {
+    var decoder = ESCPOSDecoder()
+
+    @Test("GS 8 L fn=112 - graphicsStoreLarge decode")
+    mutating func testGraphicsStoreLargeDecode() {
+        let imageData = Data([0xFF, 0x00])
+        // GS 8 L p1 p2 p3 p4 m fn a bx by c xL xH yL yH d1...dk
+        // パラメータ長 = 10 + 2 = 12
+        var data = Data([0x1D, 0x38, 0x4C])  // GS 8 L
+        data.append(0x0C)  // p1 = 12
+        data.append(0x00)  // p2
+        data.append(0x00)  // p3
+        data.append(0x00)  // p4
+        data.append(0x30)  // m = 48
+        data.append(0x70)  // fn = 112
+        data.append(0x30)  // a = monochrome
+        data.append(0x01)  // bx = 1
+        data.append(0x02)  // by = 2
+        data.append(0x31)  // c = color1
+        data.append(0x08)  // xL = 8
+        data.append(0x00)  // xH = 0
+        data.append(0x02)  // yL = 2
+        data.append(0x00)  // yH = 0
+        data.append(contentsOf: imageData)
+
+        let result = decoder.decode(data)
+        #expect(result.count == 1)
+
+        let expected = ESCPOSCommand.graphicsStoreLarge(
+            tone: .monochrome,
+            scaleX: 1,
+            scaleY: 2,
+            color: .color1,
+            width: 8,
+            height: 2,
+            data: imageData
+        )
+        #expect(result[0] == expected)
+    }
+
+    @Test("GS 8 L fn=50 - graphicsPrintLarge decode")
+    mutating func testGraphicsPrintLargeDecode() {
+        // GS 8 L p1 p2 p3 p4 m fn
+        let data = Data([0x1D, 0x38, 0x4C, 0x02, 0x00, 0x00, 0x00, 0x30, 0x32])
+        let result = decoder.decode(data)
+        #expect(result.count == 1)
+        #expect(result[0] == .graphicsPrintLarge)
+    }
+
+    @Test("GS 8 L fn=2 - graphicsPrintLarge decode (alternate)")
+    mutating func testGraphicsPrintLargeDecodeFn2() {
+        // fn=2 も fn=50 と同様に graphicsPrintLarge
+        let data = Data([0x1D, 0x38, 0x4C, 0x02, 0x00, 0x00, 0x00, 0x30, 0x02])
+        let result = decoder.decode(data)
+        #expect(result.count == 1)
+        #expect(result[0] == .graphicsPrintLarge)
+    }
+
+    @Test("GS 8 L fn=69 - nvGraphicsPrintLarge decode")
+    mutating func testNVGraphicsPrintLargeDecode() {
+        // GS 8 L p1 p2 p3 p4 m fn kc1 kc2 x y
+        let data = Data([0x1D, 0x38, 0x4C, 0x06, 0x00, 0x00, 0x00, 0x30, 0x45, 0x41, 0x42, 0x01, 0x02])
+        let result = decoder.decode(data)
+        #expect(result.count == 1)
+
+        let expected = ESCPOSCommand.nvGraphicsPrintLarge(keyCode1: 0x41, keyCode2: 0x42, scaleX: 1, scaleY: 2)
+        #expect(result[0] == expected)
+    }
+
+    @Test("GS 8 L unknown function - decoded as unknown")
+    mutating func testGS8LUnknownFunction() {
+        // 未知の fn=99 → unknown
+        let data = Data([0x1D, 0x38, 0x4C, 0x02, 0x00, 0x00, 0x00, 0x30, 0x63])
+        let result = decoder.decode(data)
+        #expect(result.count == 1)
+        if case .unknown = result[0] {
+            // OK
+        } else {
+            Issue.record("Expected unknown command")
+        }
+    }
+}
