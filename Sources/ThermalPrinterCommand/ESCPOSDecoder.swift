@@ -358,6 +358,14 @@ public struct ESCPOSDecoder: Sendable {
             }
             return (.unknown(Data(data[index..<min(index + 3, data.count)])), 3)
 
+        case 0x38:  // GS 8 - 大容量拡張コマンド
+            guard index + 2 < data.count else { return nil }
+            let subCmd = data[index + 2]
+            if subCmd == 0x4C {  // GS 8 L - グラフィックス（大容量版）
+                return decodeGS8L(data, from: index)
+            }
+            return (.unknown(Data(data[index..<min(index + 3, data.count)])), 3)
+
         case 0x49:  // GS I n - プリンター情報取得
             guard index + 2 < data.count else { return nil }
             let n = data[index + 2]
@@ -696,6 +704,77 @@ public struct ESCPOSDecoder: Sendable {
         }
 
         return (.unknown(Data(data[index..<(index + 3 + 2 + length)])), 3 + 2 + length)
+    }
+
+    // MARK: - Graphics Decoding (GS 8 L)
+
+    private func decodeGS8L(_ data: Data, from index: Int) -> (ESCPOSCommand, Int)? {
+        // GS 8 L p1 p2 p3 p4 m fn [parameters]
+        guard index + 8 < data.count else { return nil }
+
+        let p1 = data[index + 3]
+        let p2 = data[index + 4]
+        let p3 = data[index + 5]
+        let p4 = data[index + 6]
+        let length = Int(p1) | (Int(p2) << 8) | (Int(p3) << 16) | (Int(p4) << 24)
+
+        guard length >= 2, index + 7 + length <= data.count else { return nil }
+
+        let m = data[index + 7]
+        let fn = data[index + 8]
+
+        // グラフィックスコマンド (m = 48)
+        if m == 0x30 {
+            switch fn {
+            case 0x32, 0x02:  // fn=50 or fn=2 - グラフィックス印刷
+                return (.graphicsPrintLarge, 3 + 4 + length)
+
+            case 0x45:  // fn=69 - 指定されたNVグラフィックスの印字
+                guard length == 6 else { break }
+                let kc1 = data[index + 9]
+                let kc2 = data[index + 10]
+                let x = data[index + 11]
+                let y = data[index + 12]
+                return (.nvGraphicsPrintLarge(keyCode1: kc1, keyCode2: kc2, scaleX: x, scaleY: y), 3 + 4 + length)
+
+            case 0x70:  // fn=112 - グラフィックスデータ格納
+                // GS 8 L p1 p2 p3 p4 m fn a bx by c xL xH yL yH d1...dk
+                guard index + 16 < data.count else { return nil }
+                let a = data[index + 9]
+                let bx = data[index + 10]
+                let by = data[index + 11]
+                let c = data[index + 12]
+                let xL = data[index + 13]
+                let xH = data[index + 14]
+                let yL = data[index + 15]
+                let yH = data[index + 16]
+
+                let width = UInt16(xL) | (UInt16(xH) << 8)
+                let height = UInt16(yL) | (UInt16(yH) << 8)
+                let dataLength = length - 10  // m, fn, a, bx, by, c, xL, xH, yL, yH を除く
+
+                guard dataLength >= 0 && index + 17 + dataLength <= data.count else { return nil }
+
+                let imageData = Data(data[(index + 17)..<(index + 17 + dataLength)])
+                let tone = ESCPOSCommand.GraphicsTone(rawValue: a) ?? .monochrome
+                let color = ESCPOSCommand.GraphicsColor(rawValue: c) ?? .color1
+
+                return (.graphicsStoreLarge(
+                    tone: tone,
+                    scaleX: bx,
+                    scaleY: by,
+                    color: color,
+                    width: width,
+                    height: height,
+                    data: imageData
+                ), 3 + 4 + length)
+
+            default:
+                break
+            }
+        }
+
+        return (.unknown(Data(data[index..<(index + 3 + 4 + length)])), 3 + 4 + length)
     }
 
     // MARK: - Raster Image Decoding

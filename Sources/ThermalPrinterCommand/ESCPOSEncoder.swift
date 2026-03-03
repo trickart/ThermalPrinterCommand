@@ -187,6 +187,20 @@ public struct ESCPOSEncoder: Sendable {
             // pL=6, pH=0, m=48, fn=69
             return Data([Self.GS, 0x28, 0x4C, 0x06, 0x00, 0x30, 0x45, kc1, kc2, x, y])
 
+        // MARK: - グラフィックス (GS 8 L) - 大容量版
+        case .graphicsStoreLarge(let tone, let scaleX, let scaleY, let color, let width, let height, let data):
+            return encodeGraphicsStoreLarge(tone: tone, scaleX: scaleX, scaleY: scaleY, color: color, width: width, height: height, data: data)
+
+        case .graphicsPrintLarge:
+            // GS 8 L p1 p2 p3 p4 m fn
+            // パラメータ長=2, m=48, fn=50
+            return Data([Self.GS, 0x38, 0x4C, 0x02, 0x00, 0x00, 0x00, 0x30, 0x32])
+
+        case .nvGraphicsPrintLarge(let kc1, let kc2, let x, let y):
+            // GS 8 L p1 p2 p3 p4 m fn kc1 kc2 x y
+            // パラメータ長=6, m=48, fn=69
+            return Data([Self.GS, 0x38, 0x4C, 0x06, 0x00, 0x00, 0x00, 0x30, 0x45, kc1, kc2, x, y])
+
         // MARK: - ステータス
         case .realtimeStatusRequest(let type):
             return Data([Self.DLE, 0x04, type])
@@ -340,6 +354,47 @@ public struct ESCPOSEncoder: Sendable {
         result.append(0x4C)  // 'L'
         result.append(pL)
         result.append(pH)
+        result.append(0x30)  // m = 48
+        result.append(0x70)  // fn = 112
+        result.append(tone.rawValue)  // a
+        result.append(scaleX)  // bx
+        result.append(scaleY)  // by
+        result.append(color.rawValue)  // c
+        result.append(UInt8(width & 0xFF))   // xL
+        result.append(UInt8((width >> 8) & 0xFF))  // xH
+        result.append(UInt8(height & 0xFF))  // yL
+        result.append(UInt8((height >> 8) & 0xFF))  // yH
+        result.append(data)  // d1...dk
+
+        return result
+    }
+
+    private func encodeGraphicsStoreLarge(
+        tone: ESCPOSCommand.GraphicsTone,
+        scaleX: UInt8,
+        scaleY: UInt8,
+        color: ESCPOSCommand.GraphicsColor,
+        width: UInt16,
+        height: UInt16,
+        data: Data
+    ) -> Data {
+        // GS 8 L p1 p2 p3 p4 m fn a bx by c xL xH yL yH d1...dk
+        // m = 48 (0x30), fn = 112 (0x70)
+        // パラメータ長 = 10 + データ長
+        let paramLength = UInt32(10 + data.count)
+        let p1 = UInt8(paramLength & 0xFF)
+        let p2 = UInt8((paramLength >> 8) & 0xFF)
+        let p3 = UInt8((paramLength >> 16) & 0xFF)
+        let p4 = UInt8((paramLength >> 24) & 0xFF)
+
+        var result = Data()
+        result.append(Self.GS)
+        result.append(0x38)  // '8'
+        result.append(0x4C)  // 'L'
+        result.append(p1)
+        result.append(p2)
+        result.append(p3)
+        result.append(p4)
         result.append(0x30)  // m = 48
         result.append(0x70)  // fn = 112
         result.append(tone.rawValue)  // a

@@ -724,6 +724,111 @@ struct ESCPOSEncoderGraphicsTests {
     }
 }
 
+// MARK: - GS 8 L (大容量グラフィックス) Tests
+
+@Suite("GS 8 L graphics encoder tests")
+struct ESCPOSEncoderGS8LTests {
+    let encoder = ESCPOSEncoder()
+
+    @Test("graphicsStoreLarge encoding")
+    func testGraphicsStoreLargeEncoding() {
+        let imageData = Data([0xFF, 0x00])
+        let command = ESCPOSCommand.graphicsStoreLarge(
+            tone: .monochrome,
+            scaleX: 1,
+            scaleY: 2,
+            color: .color1,
+            width: 8,
+            height: 2,
+            data: imageData
+        )
+        let encoded = encoder.encode(command)
+
+        // GS 8 L p1 p2 p3 p4 m fn a bx by c xL xH yL yH d1...dk
+        // パラメータ長 = 10 + 2 = 12 = 0x0C
+        var expected = Data([0x1D, 0x38, 0x4C])  // GS 8 L
+        expected.append(0x0C)  // p1
+        expected.append(0x00)  // p2
+        expected.append(0x00)  // p3
+        expected.append(0x00)  // p4
+        expected.append(0x30)  // m = 48
+        expected.append(0x70)  // fn = 112
+        expected.append(0x30)  // a = 48 (monochrome)
+        expected.append(0x01)  // bx = 1
+        expected.append(0x02)  // by = 2
+        expected.append(0x31)  // c = 49 (color1)
+        expected.append(0x08)  // xL = 8
+        expected.append(0x00)  // xH = 0
+        expected.append(0x02)  // yL = 2
+        expected.append(0x00)  // yH = 0
+        expected.append(contentsOf: imageData)
+
+        #expect(encoded == expected)
+    }
+
+    @Test("graphicsPrintLarge encoding")
+    func testGraphicsPrintLargeEncoding() {
+        let command = ESCPOSCommand.graphicsPrintLarge
+        let encoded = encoder.encode(command)
+
+        // GS 8 L p1 p2 p3 p4 m fn
+        let expected = Data([0x1D, 0x38, 0x4C, 0x02, 0x00, 0x00, 0x00, 0x30, 0x32])
+        #expect(encoded == expected)
+    }
+
+    @Test("nvGraphicsPrintLarge encoding")
+    func testNVGraphicsPrintLargeEncoding() {
+        let command = ESCPOSCommand.nvGraphicsPrintLarge(keyCode1: 0x41, keyCode2: 0x42, scaleX: 1, scaleY: 2)
+        let encoded = encoder.encode(command)
+
+        // GS 8 L p1 p2 p3 p4 m fn kc1 kc2 x y
+        let expected = Data([0x1D, 0x38, 0x4C, 0x06, 0x00, 0x00, 0x00, 0x30, 0x45, 0x41, 0x42, 0x01, 0x02])
+        #expect(encoded == expected)
+    }
+
+    @Test("graphicsStoreLarge round-trip")
+    func testGraphicsStoreLargeRoundTrip() {
+        let imageData = Data([0xFF, 0x00, 0xFF, 0x00])
+        let command = ESCPOSCommand.graphicsStoreLarge(
+            tone: .monochrome,
+            scaleX: 1,
+            scaleY: 1,
+            color: .color1,
+            width: 16,
+            height: 2,
+            data: imageData
+        )
+        let encoded = encoder.encode(command)
+        var decoder = ESCPOSDecoder()
+        let decoded = decoder.decode(encoded)
+
+        #expect(decoded.count == 1)
+        #expect(decoded[0] == command)
+    }
+
+    @Test("graphicsPrintLarge round-trip")
+    func testGraphicsPrintLargeRoundTrip() {
+        let command = ESCPOSCommand.graphicsPrintLarge
+        let encoded = encoder.encode(command)
+        var decoder = ESCPOSDecoder()
+        let decoded = decoder.decode(encoded)
+
+        #expect(decoded.count == 1)
+        #expect(decoded[0] == command)
+    }
+
+    @Test("nvGraphicsPrintLarge round-trip")
+    func testNVGraphicsPrintLargeRoundTrip() {
+        let command = ESCPOSCommand.nvGraphicsPrintLarge(keyCode1: 0x20, keyCode2: 0x7E, scaleX: 2, scaleY: 3)
+        let encoded = encoder.encode(command)
+        var decoder = ESCPOSDecoder()
+        let decoded = decoder.decode(encoded)
+
+        #expect(decoded.count == 1)
+        #expect(decoded[0] == command)
+    }
+}
+
 // MARK: - CGImage Raster Tests
 
 #if canImport(CoreGraphics)

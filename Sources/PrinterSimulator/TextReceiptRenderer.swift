@@ -156,6 +156,29 @@ public struct TextReceiptRenderer {
                 printCentered("[NV GRAPHICS: key=(\(kc1),\(kc2)) scale=\(scaleX)x\(scaleY)]")
             }
 
+        case .graphicsStoreLarge(_, _, _, _, let width, let height, let data):
+            flushLine(status: status)
+            if sixelEnabled {
+                let widthBytes = (Int(width) + 7) / 8
+                let sixel = SixelEncoder.encode(data: data, widthBytes: widthBytes, height: Int(height), scale: displayScale)
+                outputLine(applySixelJustification(sixel, imageCharWidth: widthBytes, justification: status.justification))
+            } else {
+                printCentered("[IMAGE: \(width)x\(height) dots]")
+            }
+
+        case .graphicsPrintLarge:
+            break  // graphicsStoreLargeで既に表示済み
+
+        case .nvGraphicsPrintLarge(let kc1, let kc2, let scaleX, let scaleY):
+            flushLine(status: status)
+            if sixelEnabled {
+                let logo = Self.generateNVGraphicsPlaceholder(text: "\(kc1):\(kc2)", scaleX: Int(scaleX), scaleY: Int(scaleY))
+                let sixel = SixelEncoder.encode(data: logo.data, widthBytes: logo.widthBytes, height: logo.height, scale: displayScale)
+                outputLine(applySixelJustification(sixel, imageCharWidth: logo.widthBytes, justification: status.justification))
+            } else {
+                printCentered("[NV GRAPHICS: key=(\(kc1),\(kc2)) scale=\(scaleX)x\(scaleY)]")
+            }
+
         case .absolutePosition(let dots):
             let charPos = dotsToChars(dots: Int(dots), status: status)
             let currentLen = lineBuffer.count
