@@ -212,6 +212,12 @@ public struct ESCPOSEncoder: Sendable {
         case .kanjiDoubleSize(let width, let height):
             return Data([Self.FS, 0x53, width, height])
 
+        // MARK: - コード変換方式 (FS ( C)
+        case .selectCharacterEncoding(let encoding):
+            // FS ( C pL pH fn m
+            // 1C 28 43 02 00 30 m
+            return Data([Self.FS, 0x28, 0x43, 0x02, 0x00, 0x30, encoding.rawValue])
+
         case .selectKanjiMode:
             return Data([Self.FS, 0x26])
 

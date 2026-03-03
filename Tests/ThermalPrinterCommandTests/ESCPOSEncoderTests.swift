@@ -60,6 +60,15 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.selectPrintColor(.red)) == Data([0x1B, 0x72, 0x01]))
     }
 
+    @Test("Character encoding type selection (FS ( C fn=48)")
+    func testCharacterEncodingTypeSelection() {
+        // FS ( C pL pH fn m = 1C 28 43 02 00 30 m
+        // コードページ方式 (m=1)
+        #expect(encoder.encode(.selectCharacterEncoding(.codePage)) == Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x01]))
+        // UTF-8方式 (m=2)
+        #expect(encoder.encode(.selectCharacterEncoding(.utf8)) == Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x02]))
+    }
+
     @Test("International character set selection (ESC R)")
     func testInternationalCharacterSet() {
         #expect(encoder.encode(.selectInternationalCharacterSet(.usa)) == Data([0x1B, 0x52, 0x00]))
@@ -520,6 +529,19 @@ struct ESCPOSRoundtripTests {
         let commands: [ESCPOSCommand] = [
             .selectPrintColor(.black),
             .selectPrintColor(.red)
+        ]
+        for command in commands {
+            let encoded = encoder.encode(command)
+            let decoded = decoder.decode(encoded)
+            #expect(decoded == [command])
+        }
+    }
+
+    @Test("Character encoding type roundtrip")
+    mutating func testCharacterEncodingTypeRoundtrip() {
+        let commands: [ESCPOSCommand] = [
+            .selectCharacterEncoding(.codePage),
+            .selectCharacterEncoding(.utf8)
         ]
         for command in commands {
             let encoded = encoder.encode(command)

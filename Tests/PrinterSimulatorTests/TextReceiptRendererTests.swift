@@ -566,6 +566,34 @@ struct TextReceiptRendererTests {
         #expect(sixel1.count < sixel2.count)
     }
 
+    // MARK: - 文字エンコーディング (FS ( C)
+
+    @Test("UTF-8モード時にUTF-8テキストが正しくデコードされる")
+    func utf8ModeDecodesUtf8Text() {
+        var (simulator, getLines) = makeSimulator(ansiStyleEnabled: false)
+        _ = simulator.process([
+            .selectCharacterEncoding(.utf8),
+            .text(Data("こんにちは世界".utf8)),
+            .lineFeed,
+        ])
+        let lines = getLines()
+        #expect(lines[0] == "こんにちは世界")
+    }
+
+    @Test("UTF-8モード時に characterCodeTable の設定が無視される")
+    func utf8ModeIgnoresCodeTable() {
+        var (simulator, getLines) = makeSimulator(ansiStyleEnabled: false)
+        _ = simulator.process([
+            .selectCharacterEncoding(.utf8),
+            .selectCharacterCodeTable(page: 1),
+            .text(Data("Hello".utf8)),
+            .lineFeed,
+        ])
+        let lines = getLines()
+        // コードページ1が有効でもUTF-8モードではそのままデコードされる
+        #expect(lines[0] == "Hello")
+    }
+
     // MARK: - コードページ
 
     @Test("ESC t 1 後の 0x95 バイトがコードページ1(カタカナ)の ─ としてデコードされる")

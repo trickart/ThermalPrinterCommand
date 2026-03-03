@@ -186,6 +186,7 @@ public struct TextReceiptRenderer {
              .selectInternationalCharacterSet,
              .selectCharacterCodeTable,
              .selectKanjiCodeSystem,
+             .selectCharacterEncoding,
              .selectKanjiMode, .kanjiDoubleSize, .cancelKanjiMode,
              .realtimeStatusRequest,
              .printerInfoRequest,
@@ -202,6 +203,11 @@ public struct TextReceiptRenderer {
     // MARK: - Private Helpers
 
     func decodeText(_ data: Data, status: PrinterStatus) -> String {
+        // UTF-8モード: ESC t の設定を無視し、UTF-8でデコード（失敗時はShift_JISにフォールバック）
+        if status.characterEncodingType == .utf8 {
+            return String(data: data, encoding: .utf8)
+                ?? String(data: data, encoding: .shiftJIS) ?? ""
+        }
         // シングルバイトコードページが明示選択されている場合はコードページテーブルを使用
         if status.characterCodeTable > 0 {
             if data.allSatisfy({ $0 >= 0x20 }) {

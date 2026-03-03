@@ -417,9 +417,45 @@ public struct ESCPOSDecoder: Sendable {
             let n2 = data[index + 3]
             return (.kanjiDoubleSize(width: n1, height: n2), 4)
 
+        case 0x28:  // FS ( - 拡張コマンド
+            guard index + 2 < data.count else { return nil }
+            let subCmd = data[index + 2]
+            if subCmd == 0x43 {  // FS ( C - コード変換方式
+                return decodeFSParenC(data, from: index)
+            }
+            return (.unknown(Data(data[index..<min(index + 3, data.count)])), 3)
+
         default:
             return (.unknown(Data(data[index..<min(index + 2, data.count)])), 2)
         }
+    }
+
+    // MARK: - Character Encoding Decoding (FS ( C)
+
+    private func decodeFSParenC(_ data: Data, from index: Int) -> (ESCPOSCommand, Int)? {
+        // FS ( C pL pH fn m
+        guard index + 4 < data.count else { return nil }
+
+        let pL = data[index + 3]
+        let pH = data[index + 4]
+        let length = Int(pL) | (Int(pH) << 8)
+
+        guard index + 5 + length <= data.count else { return nil }
+
+        let fn = data[index + 5]
+
+        if fn == 0x30 {  // fn=48 - 文字のエンコード種類の選択
+            guard length == 2 && index + 6 < data.count else {
+                return (.unknown(Data(data[index..<(index + 3 + 2 + length)])), 3 + 2 + length)
+            }
+            let m = data[index + 6]
+            if let encoding = ESCPOSCommand.CharacterEncodingType(rawValue: m) {
+                return (.selectCharacterEncoding(encoding), 3 + 2 + length)
+            }
+            return (.unknown(Data(data[index..<(index + 3 + 2 + length)])), 3 + 2 + length)
+        }
+
+        return (.unknown(Data(data[index..<(index + 3 + 2 + length)])), 3 + 2 + length)
     }
 
     // MARK: - Barcode Decoding
