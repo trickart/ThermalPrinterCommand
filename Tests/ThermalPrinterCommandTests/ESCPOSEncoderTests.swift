@@ -80,6 +80,14 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.selectCharacterEncoding(.utf8)) == Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x02]))
     }
 
+    @Test("Set horizontal tab positions (ESC D)")
+    func testSetHorizontalTab() {
+        // ESC D 8 16 24 NUL
+        #expect(encoder.encode(.setHorizontalTab([8, 16, 24])) == Data([0x1B, 0x44, 8, 16, 24, 0x00]))
+        // ESC D NUL (クリア)
+        #expect(encoder.encode(.setHorizontalTab([])) == Data([0x1B, 0x44, 0x00]))
+    }
+
     @Test("International character set selection (ESC R)")
     func testInternationalCharacterSet() {
         #expect(encoder.encode(.selectInternationalCharacterSet(.usa)) == Data([0x1B, 0x52, 0x00]))
@@ -567,6 +575,19 @@ struct ESCPOSRoundtripTests {
         let commands: [ESCPOSCommand] = [
             .selectCharacterEncoding(.codePage),
             .selectCharacterEncoding(.utf8)
+        ]
+        for command in commands {
+            let encoded = encoder.encode(command)
+            let decoded = decoder.decode(encoded)
+            #expect(decoded == [command])
+        }
+    }
+
+    @Test("Set horizontal tab roundtrip")
+    mutating func testSetHorizontalTabRoundtrip() {
+        let commands: [ESCPOSCommand] = [
+            .setHorizontalTab([8, 16, 24, 32]),
+            .setHorizontalTab([])
         ]
         for command in commands {
             let encoded = encoder.encode(command)
