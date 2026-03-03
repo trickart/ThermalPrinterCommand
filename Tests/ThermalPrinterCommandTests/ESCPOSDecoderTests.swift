@@ -702,4 +702,40 @@ struct ESCPOSDecoderTests {
         #expect(commands.contains(.transmitPrintStatus(type: 1)))
         #expect(commands.contains(.cutWithFeed(mode: .partialWithFeed, feed: 0)))
     }
+
+    @Test("Character encoding type selection (FS ( C fn=48)")
+    mutating func testCharacterEncodingTypeSelection() {
+        // コードページ方式 (m=1)
+        let codePage = Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x01])
+        #expect(decoder.decode(codePage) == [.selectCharacterEncoding(.codePage)])
+
+        // UTF-8方式 (m=2)
+        let utf8 = Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x02])
+        #expect(decoder.decode(utf8) == [.selectCharacterEncoding(.utf8)])
+
+        // ASCII文字コードによる指定 (m=49='1' → codePage)
+        let codePageAscii = Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x31])
+        #expect(decoder.decode(codePageAscii) == [.selectCharacterEncoding(.codePage)])
+
+        // ASCII文字コードによる指定 (m=50='2' → utf8)
+        let utf8Ascii = Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x32])
+        #expect(decoder.decode(utf8Ascii) == [.selectCharacterEncoding(.utf8)])
+
+        // 不正なm値 → unknown
+        let invalidM = Data([0x1C, 0x28, 0x43, 0x02, 0x00, 0x30, 0x05])
+        let result = decoder.decode(invalidM)
+        #expect(result.count == 1)
+        if case .unknown = result.first {} else {
+            Issue.record("Expected .unknown but got \(String(describing: result.first))")
+        }
+    }
+
+    @Test("Character encoding type - incomplete data")
+    mutating func testCharacterEncodingTypeIncompleteData() {
+        // 不完全なデータ — バッファに保持される
+        let incomplete = Data([0x1C, 0x28, 0x43, 0x02, 0x00])
+        let result = decoder.decode(incomplete)
+        #expect(result.isEmpty)
+        #expect(decoder.pendingBuffer == incomplete)
+    }
 }

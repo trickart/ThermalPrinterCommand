@@ -147,6 +147,9 @@ struct ESCPOSPrinterSimulatorTests {
         _ = simulator.process([.characterSize(width: 4, height: 3)])
         #expect(simulator.status.widthMultiplier == 4)
         #expect(simulator.status.heightMultiplier == 3)
+
+        _ = simulator.process([.selectCharacterEncoding(.utf8)])
+        #expect(simulator.status.characterEncodingType == .utf8)
     }
 
     @Test("qrCodePrint 後に qrCodeStoredData がクリアされる")

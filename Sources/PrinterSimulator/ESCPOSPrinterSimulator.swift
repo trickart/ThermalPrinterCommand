@@ -98,6 +98,8 @@ public struct ESCPOSPrinterSimulator {
             status.internationalCharacterSet = characterSet
         case .selectCharacterCodeTable(let page):
             status.characterCodeTable = page
+        case .selectCharacterEncoding(let encoding):
+            status.characterEncodingType = encoding
         default:
             break
         }
