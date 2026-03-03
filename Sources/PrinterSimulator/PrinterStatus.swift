@@ -30,6 +30,7 @@ public struct PrinterStatus: Sendable {
     public var qrCodeStoredData: Data?
     public var internationalCharacterSet: ESCPOSCommand.InternationalCharacterSet = .japan
     public var characterCodeTable: UInt8 = 0
+    public var kanjiFont: ESCPOSCommand.KanjiFont = .fontA
     public var characterEncodingType: ESCPOSCommand.CharacterEncodingType = .codePage
     public var printColor: ESCPOSCommand.PrintColor = .black
 
@@ -69,6 +70,7 @@ public struct PrinterStatus: Sendable {
         qrCodeStoredData = nil
         internationalCharacterSet = .japan
         characterCodeTable = 0
+        kanjiFont = .fontA
         characterEncodingType = .codePage
         printColor = .black
     }

@@ -703,6 +703,50 @@ struct ESCPOSDecoderTests {
         #expect(commands.contains(.cutWithFeed(mode: .partialWithFeed, feed: 0)))
     }
 
+    @Test("Kanji font selection (FS ( A fn=48)")
+    mutating func testKanjiFontSelection() {
+        // 漢字フォント A (m=0)
+        let fontA = Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x00])
+        #expect(decoder.decode(fontA) == [.selectKanjiFont(.fontA)])
+
+        // 漢字フォント B (m=1)
+        let fontB = Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x01])
+        #expect(decoder.decode(fontB) == [.selectKanjiFont(.fontB)])
+
+        // 漢字フォント C (m=2)
+        let fontC = Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x02])
+        #expect(decoder.decode(fontC) == [.selectKanjiFont(.fontC)])
+
+        // ASCII文字コードによる指定 (m=48='0' → fontA)
+        let fontAAscii = Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x30])
+        #expect(decoder.decode(fontAAscii) == [.selectKanjiFont(.fontA)])
+
+        // ASCII文字コードによる指定 (m=49='1' → fontB)
+        let fontBAscii = Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x31])
+        #expect(decoder.decode(fontBAscii) == [.selectKanjiFont(.fontB)])
+
+        // ASCII文字コードによる指定 (m=50='2' → fontC)
+        let fontCAscii = Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x32])
+        #expect(decoder.decode(fontCAscii) == [.selectKanjiFont(.fontC)])
+
+        // 不正なm値 → unknown
+        let invalidM = Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x05])
+        let result = decoder.decode(invalidM)
+        #expect(result.count == 1)
+        if case .unknown = result.first {} else {
+            Issue.record("Expected .unknown but got \(String(describing: result.first))")
+        }
+    }
+
+    @Test("Kanji font selection - incomplete data")
+    mutating func testKanjiFontSelectionIncompleteData() {
+        // 不完全なデータ — バッファに保持される
+        let incomplete = Data([0x1C, 0x28, 0x41, 0x02, 0x00])
+        let result = decoder.decode(incomplete)
+        #expect(result.isEmpty)
+        #expect(decoder.pendingBuffer == incomplete)
+    }
+
     @Test("Character encoding type selection (FS ( C fn=48)")
     mutating func testCharacterEncodingTypeSelection() {
         // コードページ方式 (m=1)

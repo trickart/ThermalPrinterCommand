@@ -147,6 +147,10 @@ public enum ESCPOSCommand: Equatable, Sendable {
     /// 漢字モード解除 (FS .)
     case cancelKanjiMode
 
+    // MARK: - 漢字の文字装飾 (FS ( A)
+    /// 漢字フォントの選択 (FS ( A fn=48)
+    case selectKanjiFont(KanjiFont)
+
     // MARK: - コード変換方式 (FS ( C)
     /// 文字のエンコード種類の選択 (FS ( C fn=48)
     case selectCharacterEncoding(CharacterEncodingType)
@@ -334,6 +338,30 @@ public extension ESCPOSCommand {
                 self = .black
             case 1, 49:  // 1 or '1'
                 self = .red
+            default:
+                return nil
+            }
+        }
+    }
+
+    /// 漢字フォント (FS ( A fn=48)
+    enum KanjiFont: UInt8, Sendable {
+        /// 漢字フォント A
+        case fontA = 0
+        /// 漢字フォント B
+        case fontB = 1
+        /// 漢字フォント C
+        case fontC = 2
+
+        /// 0, 1, 2, 48('0'), 49('1'), 50('2') から初期化可能
+        public init?(rawValue: UInt8) {
+            switch rawValue {
+            case 0, 48:  // 0 or '0'
+                self = .fontA
+            case 1, 49:  // 1 or '1'
+                self = .fontB
+            case 2, 50:  // 2 or '2'
+                self = .fontC
             default:
                 return nil
             }
