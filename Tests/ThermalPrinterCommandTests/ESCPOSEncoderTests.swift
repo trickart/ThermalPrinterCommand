@@ -60,6 +60,17 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.selectPrintColor(.red)) == Data([0x1B, 0x72, 0x01]))
     }
 
+    @Test("Kanji font selection (FS ( A fn=48)")
+    func testKanjiFontSelection() {
+        // FS ( A pL pH fn m = 1C 28 41 02 00 30 m
+        // 漢字フォント A (m=0)
+        #expect(encoder.encode(.selectKanjiFont(.fontA)) == Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x00]))
+        // 漢字フォント B (m=1)
+        #expect(encoder.encode(.selectKanjiFont(.fontB)) == Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x01]))
+        // 漢字フォント C (m=2)
+        #expect(encoder.encode(.selectKanjiFont(.fontC)) == Data([0x1C, 0x28, 0x41, 0x02, 0x00, 0x30, 0x02]))
+    }
+
     @Test("Character encoding type selection (FS ( C fn=48)")
     func testCharacterEncodingTypeSelection() {
         // FS ( C pL pH fn m = 1C 28 43 02 00 30 m
@@ -529,6 +540,20 @@ struct ESCPOSRoundtripTests {
         let commands: [ESCPOSCommand] = [
             .selectPrintColor(.black),
             .selectPrintColor(.red)
+        ]
+        for command in commands {
+            let encoded = encoder.encode(command)
+            let decoded = decoder.decode(encoded)
+            #expect(decoded == [command])
+        }
+    }
+
+    @Test("Kanji font roundtrip")
+    mutating func testKanjiFontRoundtrip() {
+        let commands: [ESCPOSCommand] = [
+            .selectKanjiFont(.fontA),
+            .selectKanjiFont(.fontB),
+            .selectKanjiFont(.fontC)
         ]
         for command in commands {
             let encoded = encoder.encode(command)

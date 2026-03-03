@@ -148,6 +148,9 @@ struct ESCPOSPrinterSimulatorTests {
         #expect(simulator.status.widthMultiplier == 4)
         #expect(simulator.status.heightMultiplier == 3)
 
+        _ = simulator.process([.selectKanjiFont(.fontB)])
+        #expect(simulator.status.kanjiFont == .fontB)
+
         _ = simulator.process([.selectCharacterEncoding(.utf8)])
         #expect(simulator.status.characterEncodingType == .utf8)
     }
