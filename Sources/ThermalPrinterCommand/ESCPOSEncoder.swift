@@ -223,6 +223,9 @@ public struct ESCPOSEncoder: Sendable {
             return Data([Self.GS, 0x28, 0x48, 0x06, 0x00, 0x30, 0x30, d1, d2, d3, d4])
 
         // MARK: - 漢字関連 (FS)
+        case .selectKanjiPrintMode(let mode):
+            return Data([Self.FS, 0x21, mode.rawValue])
+
         case .kanjiUnderline(let mode):
             return Data([Self.FS, 0x2D, mode.rawValue])
 

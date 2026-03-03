@@ -16,6 +16,8 @@ public struct PrinterStatus: Sendable {
     public var bold = false
     public var underlineMode: ESCPOSCommand.UnderlineMode = .off
     public var kanjiMode = false
+    public var kanjiDoubleWidth = false
+    public var kanjiDoubleHeight = false
     public var kanjiUnderlineMode: ESCPOSCommand.UnderlineMode = .off
     public var reverse = false
     public var justification: ESCPOSCommand.Justification = .left
@@ -58,6 +60,8 @@ public struct PrinterStatus: Sendable {
         bold = false
         underlineMode = .off
         kanjiMode = false
+        kanjiDoubleWidth = false
+        kanjiDoubleHeight = false
         kanjiUnderlineMode = .off
         reverse = false
         justification = .left

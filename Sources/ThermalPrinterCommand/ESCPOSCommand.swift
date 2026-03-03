@@ -154,6 +154,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case selectPrintColor(PrintColor)
 
     // MARK: - 漢字関連 (FS)
+    /// 漢字の印字モードの一括指定 (FS ! n)
+    case selectKanjiPrintMode(KanjiPrintMode)
     /// 漢字アンダーラインの指定・解除 (FS - n)
     case kanjiUnderline(UnderlineMode)
     /// 漢字コード体系の選択 (FS C n)
@@ -215,6 +217,22 @@ public extension ESCPOSCommand {
         public static let doubleWidth  = PrintMode(rawValue: 1 << 5)
         /// アンダーライン (Bit 7)
         public static let underline   = PrintMode(rawValue: 1 << 7)
+    }
+
+    /// 漢字の印字モード (FS ! n) のビットフィールド
+    struct KanjiPrintMode: OptionSet, Sendable, Hashable {
+        public let rawValue: UInt8
+
+        public init(rawValue: UInt8) {
+            self.rawValue = rawValue
+        }
+
+        /// 横倍拡大 (Bit 2)
+        public static let doubleWidth  = KanjiPrintMode(rawValue: 1 << 2)
+        /// 縦倍拡大 (Bit 3)
+        public static let doubleHeight = KanjiPrintMode(rawValue: 1 << 3)
+        /// 漢字アンダーライン (Bit 7)
+        public static let underline    = KanjiPrintMode(rawValue: 1 << 7)
     }
 
     enum Font: UInt8, Sendable {

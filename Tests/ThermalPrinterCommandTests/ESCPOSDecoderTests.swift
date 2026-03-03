@@ -603,6 +603,29 @@ struct ESCPOSDecoderTests {
         #expect(commands == [.characterSpacing(dots: 4)])
     }
 
+    @Test("FS ! n - Select kanji print mode")
+    mutating func testSelectKanjiPrintMode() {
+        // 全ビットオフ
+        let standard = Data([0x1C, 0x21, 0x00])
+        #expect(decoder.decode(standard) == [.selectKanjiPrintMode([])])
+
+        // 横倍拡大のみ (Bit 2 = 0x04)
+        let doubleWidth = Data([0x1C, 0x21, 0x04])
+        #expect(decoder.decode(doubleWidth) == [.selectKanjiPrintMode(.doubleWidth)])
+
+        // 縦倍拡大のみ (Bit 3 = 0x08)
+        let doubleHeight = Data([0x1C, 0x21, 0x08])
+        #expect(decoder.decode(doubleHeight) == [.selectKanjiPrintMode(.doubleHeight)])
+
+        // 漢字アンダーラインのみ (Bit 7 = 0x80)
+        let underline = Data([0x1C, 0x21, 0x80])
+        #expect(decoder.decode(underline) == [.selectKanjiPrintMode(.underline)])
+
+        // 複合: 横倍 + 縦倍 + アンダーライン (0x8C)
+        let all = Data([0x1C, 0x21, 0x8C])
+        #expect(decoder.decode(all) == [.selectKanjiPrintMode([.doubleWidth, .doubleHeight, .underline])])
+    }
+
     @Test("FS S n1 n2 - Kanji double size")
     mutating func testKanjiDoubleSize() {
         let data = Data([0x1C, 0x53, 0x01, 0x02])  // FS S 1 2

@@ -65,6 +65,10 @@ public struct ESCPOSPrinterSimulator {
             status.bold = false
         case .underline(let mode):
             status.underlineMode = mode
+        case .selectKanjiPrintMode(let mode):
+            status.kanjiDoubleWidth = mode.contains(.doubleWidth)
+            status.kanjiDoubleHeight = mode.contains(.doubleHeight)
+            status.kanjiUnderlineMode = mode.contains(.underline) ? .single : .off
         case .selectKanjiMode:
             status.kanjiMode = true
         case .cancelKanjiMode:

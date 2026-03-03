@@ -279,6 +279,22 @@ struct ESCPOSEncoderTests {
         #expect(encoder.encode(.cancelKanjiMode) == Data([0x1C, 0x2E]))
     }
 
+    @Test("Select kanji print mode (FS !)")
+    func testSelectKanjiPrintMode() {
+        // FS ! n (0x1C 0x21 n)
+        // 全ビットオフ（標準モード）
+        #expect(encoder.encode(.selectKanjiPrintMode([])) == Data([0x1C, 0x21, 0x00]))
+        // 横倍拡大のみ (Bit 2)
+        #expect(encoder.encode(.selectKanjiPrintMode(.doubleWidth)) == Data([0x1C, 0x21, 0x04]))
+        // 縦倍拡大のみ (Bit 3)
+        #expect(encoder.encode(.selectKanjiPrintMode(.doubleHeight)) == Data([0x1C, 0x21, 0x08]))
+        // 漢字アンダーラインのみ (Bit 7)
+        #expect(encoder.encode(.selectKanjiPrintMode(.underline)) == Data([0x1C, 0x21, 0x80]))
+        // 複合: 横倍拡大 + 縦倍拡大 + アンダーライン
+        let allModes: ESCPOSCommand.KanjiPrintMode = [.doubleWidth, .doubleHeight, .underline]
+        #expect(encoder.encode(.selectKanjiPrintMode(allModes)) == Data([0x1C, 0x21, 0x8C]))
+    }
+
     @Test("Kanji underline")
     func testKanjiUnderline() {
         // FS - n (0x1C 0x2D n)
@@ -588,6 +604,22 @@ struct ESCPOSRoundtripTests {
         let commands: [ESCPOSCommand] = [
             .setHorizontalTab([8, 16, 24, 32]),
             .setHorizontalTab([])
+        ]
+        for command in commands {
+            let encoded = encoder.encode(command)
+            let decoded = decoder.decode(encoded)
+            #expect(decoded == [command])
+        }
+    }
+
+    @Test("Kanji print mode roundtrip")
+    mutating func testKanjiPrintModeRoundtrip() {
+        let commands: [ESCPOSCommand] = [
+            .selectKanjiPrintMode([]),
+            .selectKanjiPrintMode(.doubleWidth),
+            .selectKanjiPrintMode(.doubleHeight),
+            .selectKanjiPrintMode(.underline),
+            .selectKanjiPrintMode([.doubleWidth, .doubleHeight, .underline])
         ]
         for command in commands {
             let encoded = encoder.encode(command)

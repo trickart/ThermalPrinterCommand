@@ -202,7 +202,7 @@ public struct TextReceiptRenderer {
         case .setHorizontalTab:
             break  // 状態はシミュレーターが管理
 
-        case .selectPrintMode,
+        case .selectPrintMode, .selectKanjiPrintMode,
              .boldOn, .boldOff, .underline, .kanjiUnderline, .reverseMode, .justification,
              .characterSize, .characterSpacing,
              .barcodeHeight, .barcodeWidth, .barcodeHRIPosition,
