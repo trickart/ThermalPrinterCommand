@@ -362,6 +362,33 @@ struct ESCPOSDecoderTests {
         #expect(decoder.decode(shiftJIS2004Char) == [.selectKanjiCodeSystem(.shiftJIS2004)])
     }
 
+    // MARK: - 水平タブ位置設定 (ESC D)
+
+    @Test("Set horizontal tab positions (ESC D)")
+    mutating func testSetHorizontalTab() {
+        // ESC D 8 16 24 NUL
+        let data = Data([0x1B, 0x44, 8, 16, 24, 0x00])
+        let commands = decoder.decode(data)
+        #expect(commands == [.setHorizontalTab([8, 16, 24])])
+    }
+
+    @Test("Clear horizontal tab positions (ESC D NUL)")
+    mutating func testClearHorizontalTab() {
+        // ESC D NUL = クリア
+        let data = Data([0x1B, 0x44, 0x00])
+        let commands = decoder.decode(data)
+        #expect(commands == [.setHorizontalTab([])])
+    }
+
+    @Test("ESC D incomplete data is buffered")
+    mutating func testSetHorizontalTabIncomplete() {
+        // NUL 終端がないデータ → バッファに保持
+        let data = Data([0x1B, 0x44, 8, 16])
+        let commands = decoder.decode(data)
+        #expect(commands.isEmpty)
+        #expect(decoder.pendingBuffer == data)
+    }
+
     // MARK: - プロセスIDレスポンス (GS ( H fn=48)
 
     @Test("Realtime status request")

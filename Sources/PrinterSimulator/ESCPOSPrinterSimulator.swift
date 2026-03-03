@@ -102,6 +102,8 @@ public struct ESCPOSPrinterSimulator {
             status.kanjiFont = font
         case .selectCharacterEncoding(let encoding):
             status.characterEncodingType = encoding
+        case .setHorizontalTab(let tabs):
+            status.horizontalTabPositions = tabs
         default:
             break
         }

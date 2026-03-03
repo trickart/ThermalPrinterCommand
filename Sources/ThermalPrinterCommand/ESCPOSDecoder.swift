@@ -160,6 +160,9 @@ public struct ESCPOSDecoder: Sendable {
         case 0x40:  // ESC @ - 初期化
             return (.initialize, 2)
 
+        case 0x44:  // ESC D n1...nk NUL - 水平タブ位置設定
+            return decodeESCD(data, from: index)
+
         case 0x4D:  // ESC M n - フォント選択
             guard index + 2 < data.count else { return nil }
             let n = data[index + 2]
@@ -264,6 +267,25 @@ public struct ESCPOSDecoder: Sendable {
         default:
             return (.unknown(Data(data[index..<min(index + 2, data.count)])), 2)
         }
+    }
+
+    // MARK: - ESC D (Set Horizontal Tab)
+
+    private func decodeESCD(_ data: Data, from index: Int) -> (ESCPOSCommand, Int)? {
+        // ESC D n1...nk NUL
+        var tabs: [UInt8] = []
+        var i = index + 2
+        while i < data.count {
+            let byte = data[i]
+            if byte == 0x00 {
+                return (.setHorizontalTab(tabs), i - index + 1)
+            }
+            tabs.append(byte)
+            if tabs.count > 32 { break }
+            i += 1
+        }
+        // NUL が見つからなければデータ不足
+        return nil
     }
 
     // MARK: - GS Commands (0x1D)

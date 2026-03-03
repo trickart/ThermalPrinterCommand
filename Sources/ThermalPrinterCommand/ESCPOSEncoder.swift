@@ -87,6 +87,12 @@ public struct ESCPOSEncoder: Sendable {
             return Data([Self.ESC, 0x72, color.rawValue])
 
         // MARK: - 位置制御
+        case .setHorizontalTab(let tabs):
+            var result = Data([Self.ESC, 0x44])
+            for tab in tabs { result.append(tab) }
+            result.append(Self.NUL)
+            return result
+
         case .absolutePosition(let dots):
             let nL = UInt8(dots & 0xFF)
             let nH = UInt8((dots >> 8) & 0xFF)

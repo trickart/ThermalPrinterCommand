@@ -44,6 +44,8 @@ public enum ESCPOSCommand: Equatable, Sendable {
     case upsideDown(enabled: Bool)
 
     // MARK: - 位置制御
+    /// 水平タブ位置設定 (ESC D n1...nk NUL)。空配列でタブ位置をすべてクリア。
+    case setHorizontalTab([UInt8])
     /// 絶対位置指定 (ESC $ nL nH)
     case absolutePosition(dots: UInt16)
     /// 相対位置指定 (ESC \ nL nH)

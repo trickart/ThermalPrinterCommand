@@ -58,7 +58,11 @@ public struct TextReceiptRenderer {
             break
 
         case .horizontalTab:
-            lineBuffer += ("\t")
+            let currentCol = lineBuffer.count
+            if let nextTab = status.horizontalTabPositions.first(where: { Int($0) > currentCol }) {
+                let spaces = Int(nextTab) - currentCol
+                lineBuffer += String(repeating: " ", count: spaces)
+            }
 
         case .printAndFeed:
             flushLine(status: status)
@@ -194,6 +198,9 @@ public struct TextReceiptRenderer {
 
         case .openCashDrawer:
             printCentered("[CASH DRAWER OPEN]")
+
+        case .setHorizontalTab:
+            break  // 状態はシミュレーターが管理
 
         case .selectPrintMode,
              .boldOn, .boldOff, .underline, .kanjiUnderline, .reverseMode, .justification,

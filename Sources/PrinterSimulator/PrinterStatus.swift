@@ -33,6 +33,8 @@ public struct PrinterStatus: Sendable {
     public var kanjiFont: ESCPOSCommand.KanjiFont = .fontA
     public var characterEncodingType: ESCPOSCommand.CharacterEncodingType = .codePage
     public var printColor: ESCPOSCommand.PrintColor = .black
+    /// 水平タブ位置（桁数）。初期値は8桁毎（8, 16, 24, ..., 248）。
+    public var horizontalTabPositions: [UInt8] = stride(from: 8, through: 248, by: 8).map { UInt8($0) }
 
     public static let normal = PrinterStatus()
 
@@ -73,5 +75,6 @@ public struct PrinterStatus: Sendable {
         kanjiFont = .fontA
         characterEncodingType = .codePage
         printColor = .black
+        horizontalTabPositions = stride(from: 8, through: 248, by: 8).map { UInt8($0) }
     }
 }
